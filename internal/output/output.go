@@ -63,12 +63,12 @@ func (p *Printer) PrintMessage(t topic.Topic, pl *pb.Payload) {
 		return
 	}
 
-	fmt.Fprintf(p.W, "[%s] %s\n", t.Type, t.String())
-	fmt.Fprintf(p.W, "  seq=%d", mv.Seq)
+	_, _ = fmt.Fprintf(p.W, "[%s] %s\n", t.Type, t.String())
+	_, _ = fmt.Fprintf(p.W, "  seq=%d", mv.Seq)
 	if mv.Time != "" {
-		fmt.Fprintf(p.W, "  ts=%s", mv.Time)
+		_, _ = fmt.Fprintf(p.W, "  ts=%s", mv.Time)
 	}
-	fmt.Fprintln(p.W)
+	_, _ = fmt.Fprintln(p.W)
 
 	tw := tabwriter.NewWriter(p.W, 2, 4, 2, ' ', 0)
 	for _, m := range mv.Metrics {
@@ -76,10 +76,10 @@ func (p *Printer) PrintMessage(t topic.Topic, pl *pb.Payload) {
 		if m.Quality != "" {
 			line += fmt.Sprintf("\tquality=%s", m.Quality)
 		}
-		fmt.Fprintln(tw, line)
+		_, _ = fmt.Fprintln(tw, line)
 	}
-	tw.Flush()
-	fmt.Fprintln(p.W)
+	_ = tw.Flush()
+	_, _ = fmt.Fprintln(p.W)
 }
 
 func (p *Printer) PrintPayload(pl *pb.Payload) {
@@ -101,11 +101,11 @@ func (p *Printer) PrintPayload(pl *pb.Payload) {
 		return
 	}
 
-	fmt.Fprintf(p.W, "seq=%d", pl.GetSeq())
+	_, _ = fmt.Fprintf(p.W, "seq=%d", pl.GetSeq())
 	if pl.Timestamp != nil {
-		fmt.Fprintf(p.W, "  ts=%s", time.UnixMilli(int64(*pl.Timestamp)).UTC().Format(time.RFC3339))
+		_, _ = fmt.Fprintf(p.W, "  ts=%s", time.UnixMilli(int64(*pl.Timestamp)).UTC().Format(time.RFC3339))
 	}
-	fmt.Fprintln(p.W)
+	_, _ = fmt.Fprintln(p.W)
 
 	tw := tabwriter.NewWriter(p.W, 2, 4, 2, ' ', 0)
 	for _, m := range pl.Metrics {
@@ -114,9 +114,9 @@ func (p *Printer) PrintPayload(pl *pb.Payload) {
 		if mv.Quality != "" {
 			line += fmt.Sprintf("\tquality=%s", mv.Quality)
 		}
-		fmt.Fprintln(tw, line)
+		_, _ = fmt.Fprintln(tw, line)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 }
 
 func metricView(m *pb.Payload_Metric) MetricView {

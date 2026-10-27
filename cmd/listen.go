@@ -62,7 +62,7 @@ func runListen(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
-	defer transport.Disconnect(context.Background())
+	defer func() { _ = transport.Disconnect(context.Background()) }()
 
 	printer := &output.Printer{W: os.Stdout, JSON: jsonOut}
 

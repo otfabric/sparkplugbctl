@@ -80,7 +80,7 @@ func runPublish(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
-	defer transport.Disconnect(context.Background())
+	defer func() { _ = transport.Disconnect(context.Background()) }()
 
 	if err := transport.Publish(ctx, pubTopic, 0, false, data); err != nil {
 		return fmt.Errorf("publish: %w", err)
