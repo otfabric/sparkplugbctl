@@ -9,7 +9,7 @@
 
 The first release: a Sparkplug B 3.0.0 command-line tool for monitoring,
 publishing, simulating and debugging MQTT infrastructure, built on
-[go-sparkplugb](https://github.com/otfabric/go-sparkplugb) v0.1.1. That
+[go-sparkplugb](https://github.com/otfabric/go-sparkplugb) v0.1.2. That
 library is qualified against six independent Sparkplug stacks on four
 MQTT brokers through the
 [sparkplugb-interop v0.1.0](https://github.com/otfabric/sparkplugb-interop/releases/tag/v0.1.0)
