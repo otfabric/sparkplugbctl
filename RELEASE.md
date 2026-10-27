@@ -1,5 +1,23 @@
 # sparkplugbctl Releases
 
+## v0.1.1
+
+**Date:** 2026-10-27
+**Previous release:** v0.1.0
+
+### Summary
+
+Built on [go-sparkplugb](https://github.com/otfabric/go-sparkplugb) v0.1.3:
+`host` and `app` keep a device whose DBIRTH a broker delivers before its
+node's NBIRTH after a restart (NanoMQ and HiveMQ CE do in some runs).
+
+### Changes
+
+- **`host` and `app` commands:** go-sparkplugb v0.1.3 holds a message behind the expected `seq` for the node's next session and applies it after the NBIRTH; before, the device stayed offline unless a rebirth came.
+- **Dependencies:** `spf13/pflag` v1.0.10, `golang.org/x/net` v0.61.0, `golang.org/x/sync` v0.24.0.
+
+---
+
 ## v0.1.0
 
 **Date:** 2026-10-27
