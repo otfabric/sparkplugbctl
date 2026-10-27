@@ -17,4 +17,5 @@ jobs:
     with:
       codecov-name: sparkplugbctl
       go-versions: '["1.27"]'
+      golangci-lint-version: v2.15.0
     secrets: inherit
