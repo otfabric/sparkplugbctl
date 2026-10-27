@@ -18,7 +18,7 @@ LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.dat
 
 TEST_PKGS := $(shell go list ./...)
 COVER_PKGS := $(shell go list ./... | paste -sd, -)
-COVER_MIN ?= 80
+COVER_MIN ?= 90
 
 GO_FILES = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 

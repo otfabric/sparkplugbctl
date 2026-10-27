@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 	"os/signal"
 	"syscall"
 	"time"
@@ -37,6 +37,7 @@ func init() {
 }
 
 func runApp(cmd *cobra.Command, args []string) error {
+	stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
 	transport, err := broker.NewTransport(brokerOpts())
 	if err != nil {
 		return err
@@ -50,16 +51,16 @@ func runApp(cmd *cobra.Command, args []string) error {
 	cfg := app.Config{
 		BrokerURL: brokerURL,
 		ClientID:  cid,
-		Logger:    &cliLogger{},
+		Logger:    &cliLogger{w: stderr},
 		OnNodeBirth: func(groupID, nodeID string, metrics []*pb.Payload_Metric) {
 			if appGroup != "" && groupID != appGroup {
 				return
 			}
 			if jsonOut {
-				printJSON("NBIRTH", groupID, nodeID, "", metrics)
+				printJSON(stdout, "NBIRTH", groupID, nodeID, "", metrics)
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(os.Stdout, "%s  [NBIRTH] %s/%s (%d metrics)\n", ts, groupID, nodeID, len(metrics))
+				_, _ = fmt.Fprintf(stdout, "%s  [NBIRTH] %s/%s (%d metrics)\n", ts, groupID, nodeID, len(metrics))
 			}
 		},
 		OnDeviceBirth: func(groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
@@ -67,10 +68,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON("DBIRTH", groupID, nodeID, deviceID, metrics)
+				printJSON(stdout, "DBIRTH", groupID, nodeID, deviceID, metrics)
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(os.Stdout, "%s  [DBIRTH] %s/%s/%s (%d metrics)\n", ts, groupID, nodeID, deviceID, len(metrics))
+				_, _ = fmt.Fprintf(stdout, "%s  [DBIRTH] %s/%s/%s (%d metrics)\n", ts, groupID, nodeID, deviceID, len(metrics))
 			}
 		},
 		OnNodeData: func(groupID, nodeID string, metrics []*pb.Payload_Metric) {
@@ -78,10 +79,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON("NDATA", groupID, nodeID, "", metrics)
+				printJSON(stdout, "NDATA", groupID, nodeID, "", metrics)
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(os.Stdout, "%s  [NDATA]  %s/%s (%d metrics)\n", ts, groupID, nodeID, len(metrics))
+				_, _ = fmt.Fprintf(stdout, "%s  [NDATA]  %s/%s (%d metrics)\n", ts, groupID, nodeID, len(metrics))
 			}
 		},
 		OnDeviceData: func(groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
@@ -89,10 +90,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON("DDATA", groupID, nodeID, deviceID, metrics)
+				printJSON(stdout, "DDATA", groupID, nodeID, deviceID, metrics)
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(os.Stdout, "%s  [DDATA]  %s/%s/%s (%d metrics)\n", ts, groupID, nodeID, deviceID, len(metrics))
+				_, _ = fmt.Fprintf(stdout, "%s  [DDATA]  %s/%s/%s (%d metrics)\n", ts, groupID, nodeID, deviceID, len(metrics))
 			}
 		},
 		OnNodeDeath: func(groupID, nodeID string) {
@@ -100,10 +101,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON("NDEATH", groupID, nodeID, "", nil)
+				printJSON(stdout, "NDEATH", groupID, nodeID, "", nil)
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(os.Stdout, "%s  [NDEATH] %s/%s\n", ts, groupID, nodeID)
+				_, _ = fmt.Fprintf(stdout, "%s  [NDEATH] %s/%s\n", ts, groupID, nodeID)
 			}
 		},
 		OnDeviceDeath: func(groupID, nodeID, deviceID string) {
@@ -111,10 +112,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON("DDEATH", groupID, nodeID, deviceID, nil)
+				printJSON(stdout, "DDEATH", groupID, nodeID, deviceID, nil)
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(os.Stdout, "%s  [DDEATH] %s/%s/%s\n", ts, groupID, nodeID, deviceID)
+				_, _ = fmt.Fprintf(stdout, "%s  [DDEATH] %s/%s/%s\n", ts, groupID, nodeID, deviceID)
 			}
 		},
 	}
@@ -124,25 +125,25 @@ func runApp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	if err := a.Connect(ctx); err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "Application mode (no STATE) — broker: %s\n", brokerURL)
+	_, _ = fmt.Fprintf(stderr, "Application mode (no STATE) — broker: %s\n", brokerURL)
 	if appGroup != "" {
-		_, _ = fmt.Fprintf(os.Stderr, "Filtering: group=%s\n", appGroup)
+		_, _ = fmt.Fprintf(stderr, "Filtering: group=%s\n", appGroup)
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "Listening for edge activity (Ctrl+C to stop)\n")
+	_, _ = fmt.Fprintf(stderr, "Listening for edge activity (Ctrl+C to stop)\n")
 
 	<-ctx.Done()
-	_, _ = fmt.Fprintln(os.Stderr, "\nShutting down application...")
+	_, _ = fmt.Fprintln(stderr, "\nShutting down application...")
 	shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutCancel()
 	_ = a.Close(shutCtx)
-	_, _ = fmt.Fprintln(os.Stderr, "Disconnected")
+	_, _ = fmt.Fprintln(stderr, "Disconnected")
 	return nil
 }
 
@@ -155,7 +156,7 @@ type appEvent struct {
 	Metrics   int    `json:"metrics,omitempty"`
 }
 
-func printJSON(msgType, groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
+func printJSON(w io.Writer, msgType, groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
 	ev := appEvent{
 		Timestamp: time.Now().Format(time.RFC3339),
 		Type:      msgType,
@@ -165,5 +166,5 @@ func printJSON(msgType, groupID, nodeID, deviceID string, metrics []*pb.Payload_
 		Metrics:   len(metrics),
 	}
 	b, _ := json.Marshal(ev)
-	_, _ = fmt.Fprintln(os.Stdout, string(b))
+	_, _ = fmt.Fprintln(w, string(b))
 }

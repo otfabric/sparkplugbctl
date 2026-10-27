@@ -5,8 +5,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand/v2"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -51,6 +51,7 @@ func init() {
 }
 
 func runEdge(cmd *cobra.Command, args []string) error {
+	stderr := cmd.ErrOrStderr()
 	transport, err := broker.NewTransport(brokerOpts())
 	if err != nil {
 		return err
@@ -67,12 +68,12 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		BrokerURL:     brokerURL,
 		ClientID:      cid,
 		PrimaryHostID: edgePrimaryHost,
-		Logger:        &cliLogger{},
+		Logger:        &cliLogger{w: stderr},
 		OnNodeCmd: func(deviceID string, metrics []*pb.Payload_Metric) {
-			_, _ = fmt.Fprintf(os.Stderr, "NCMD received: %d metric(s)\n", len(metrics))
+			_, _ = fmt.Fprintf(stderr, "NCMD received: %d metric(s)\n", len(metrics))
 		},
 		OnDeviceCmd: func(deviceID string, metrics []*pb.Payload_Metric) {
-			_, _ = fmt.Fprintf(os.Stderr, "DCMD for %s: %d metric(s)\n", deviceID, len(metrics))
+			_, _ = fmt.Fprintf(stderr, "DCMD for %s: %d metric(s)\n", deviceID, len(metrics))
 		},
 	}
 
@@ -81,13 +82,13 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	if err := node.Connect(ctx); err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "Connected to %s as %s/%s\n", brokerURL, edgeGroup, edgeNode)
+	_, _ = fmt.Fprintf(stderr, "Connected to %s as %s/%s\n", brokerURL, edgeGroup, edgeNode)
 
 	birthMetrics, err := buildEdgeMetrics(edgeMetrics)
 	if err != nil {
@@ -97,14 +98,14 @@ func runEdge(cmd *cobra.Command, args []string) error {
 	if err := node.PublishBirth(ctx, birthMetrics); err != nil {
 		return fmt.Errorf("publish NBIRTH: %w", err)
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "Published NBIRTH (%d metrics)\n", len(birthMetrics))
+	_, _ = fmt.Fprintf(stderr, "Published NBIRTH (%d metrics)\n", len(birthMetrics))
 
 	for _, devID := range edgeDevices {
 		devMetric, _ := payload.NewMetric("status", pb.DataType_Boolean, true)
 		if err := node.PublishDeviceBirth(ctx, devID, []*pb.Payload_Metric{devMetric}); err != nil {
 			return fmt.Errorf("publish DBIRTH %s: %w", devID, err)
 		}
-		_, _ = fmt.Fprintf(os.Stderr, "Published DBIRTH for %s\n", devID)
+		_, _ = fmt.Fprintf(stderr, "Published DBIRTH for %s\n", devID)
 	}
 
 	ticker := time.NewTicker(edgeInterval)
@@ -124,19 +125,19 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "Publishing data every %s (Ctrl+C to stop)\n", edgeInterval)
+	_, _ = fmt.Fprintf(stderr, "Publishing data every %s (Ctrl+C to stop)\n", edgeInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			_, _ = fmt.Fprintln(os.Stderr, "\nShutting down edge node...")
+			_, _ = fmt.Fprintln(stderr, "\nShutting down edge node...")
 			shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer shutCancel()
 			for _, devID := range edgeDevices {
 				_ = node.PublishDeviceDeath(shutCtx, devID)
-				_, _ = fmt.Fprintf(os.Stderr, "Published DDEATH for %s\n", devID)
+				_, _ = fmt.Fprintf(stderr, "Published DDEATH for %s\n", devID)
 			}
 			_ = node.Disconnect(shutCtx)
-			_, _ = fmt.Fprintln(os.Stderr, "Disconnected")
+			_, _ = fmt.Fprintln(stderr, "Disconnected")
 			return nil
 
 		case <-ticker.C:
@@ -149,9 +150,9 @@ func runEdge(cmd *cobra.Command, args []string) error {
 				dataMetrics = append(dataMetrics, m)
 			}
 			if err := node.PublishNodeData(ctx, dataMetrics); err != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "publish NDATA: %v\n", err)
+				_, _ = fmt.Fprintf(stderr, "publish NDATA: %v\n", err)
 			} else {
-				_, _ = fmt.Fprintf(os.Stderr, "Published NDATA (%d metrics)\n", len(dataMetrics))
+				_, _ = fmt.Fprintf(stderr, "Published NDATA (%d metrics)\n", len(dataMetrics))
 			}
 		}
 	}
@@ -167,17 +168,19 @@ func buildEdgeMetrics(specs []string) ([]*pb.Payload_Metric, error) {
 	return parseMetrics(specs)
 }
 
-type cliLogger struct{}
+type cliLogger struct {
+	w io.Writer
+}
 
 func (l *cliLogger) Debugf(format string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", args...)
+	_, _ = fmt.Fprintf(l.w, "[DEBUG] "+format+"\n", args...)
 }
 func (l *cliLogger) Infof(format string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, "[INFO]  "+format+"\n", args...)
+	_, _ = fmt.Fprintf(l.w, "[INFO]  "+format+"\n", args...)
 }
 func (l *cliLogger) Warnf(format string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, "[WARN]  "+format+"\n", args...)
+	_, _ = fmt.Fprintf(l.w, "[WARN]  "+format+"\n", args...)
 }
 func (l *cliLogger) Errorf(format string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, "[ERROR] "+format+"\n", args...)
+	_, _ = fmt.Fprintf(l.w, "[ERROR] "+format+"\n", args...)
 }

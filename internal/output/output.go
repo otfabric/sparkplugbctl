@@ -43,7 +43,7 @@ type MetricView struct {
 func (p *Printer) PrintMessage(t topic.Topic, pl *pb.Payload) {
 	mv := MessageView{
 		Topic:    t.String(),
-		Type:     string(t.Type),
+		Type:     t.Type.String(),
 		GroupID:  t.GroupID,
 		NodeID:   t.EdgeNodeID,
 		DeviceID: t.DeviceID,

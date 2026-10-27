@@ -5,7 +5,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/signal"
 	"syscall"
 
@@ -39,12 +38,13 @@ func init() {
 }
 
 func runListen(cmd *cobra.Command, args []string) error {
+	stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
 	transport, err := broker.NewTransport(brokerOpts())
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	cid := clientID
@@ -64,7 +64,7 @@ func runListen(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = transport.Disconnect(context.Background()) }()
 
-	printer := &output.Printer{W: os.Stdout, JSON: jsonOut}
+	printer := &output.Printer{W: stdout, JSON: jsonOut}
 
 	handler := func(topicStr string, data []byte) {
 		t, err := topic.Parse(topicStr)
@@ -83,7 +83,7 @@ func runListen(cmd *cobra.Command, args []string) error {
 
 		p, err := payload.Decode(data)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "decode error on %s: %v\n", topicStr, err)
+			_, _ = fmt.Fprintf(stderr, "decode error on %s: %v\n", topicStr, err)
 			return
 		}
 		printer.PrintMessage(t, p)
@@ -94,9 +94,9 @@ func runListen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("subscribe: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "Listening on %s (broker: %s)\n", subTopic, brokerURL)
+	_, _ = fmt.Fprintf(stderr, "Listening on %s (broker: %s)\n", subTopic, brokerURL)
 	<-ctx.Done()
-	_, _ = fmt.Fprintln(os.Stderr, "\nShutting down...")
+	_, _ = fmt.Fprintln(stderr, "\nShutting down...")
 	return nil
 }
 

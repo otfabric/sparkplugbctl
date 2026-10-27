@@ -62,7 +62,7 @@ func runPublish(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	cid := clientID
@@ -86,7 +86,7 @@ func runPublish(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("publish: %w", err)
 	}
 
-	fmt.Printf("Published %d metric(s) to %s\n", len(metrics), pubTopic)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Published %d metric(s) to %s\n", len(metrics), pubTopic)
 	return nil
 }
 

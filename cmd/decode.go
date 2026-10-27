@@ -28,7 +28,7 @@ func init() {
 }
 
 func runDecode(cmd *cobra.Command, args []string) error {
-	var r io.Reader = os.Stdin
+	r := cmd.InOrStdin()
 	if decodeFile != "" {
 		f, err := os.Open(decodeFile)
 		if err != nil {
@@ -48,7 +48,7 @@ func runDecode(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("decode protobuf: %w", err)
 	}
 
-	printer := &output.Printer{W: os.Stdout, JSON: jsonOut}
+	printer := &output.Printer{W: cmd.OutOrStdout(), JSON: jsonOut}
 	printer.PrintPayload(p)
 	return nil
 }
