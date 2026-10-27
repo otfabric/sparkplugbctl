@@ -3,7 +3,7 @@ module github.com/otfabric/sparkplugbctl
 go 1.27.3
 
 require (
-	github.com/otfabric/go-sparkplugb v0.0.0-20261027024523-31b541b0bf71
+	github.com/otfabric/go-sparkplugb v0.0.0-20261027031513-47112c7bc576
 	github.com/spf13/cobra v1.10.2
 )
 
