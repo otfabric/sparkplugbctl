@@ -50,22 +50,22 @@ func runHost(cmd *cobra.Command, args []string) error {
 		ClientID:  cid,
 		Logger:    &cliLogger{},
 		OnNodeBirth: func(groupID, nodeID string, metrics []*pb.Payload_Metric) {
-			fmt.Fprintf(os.Stdout, "[NBIRTH] %s/%s (%d metrics)\n", groupID, nodeID, len(metrics))
+			_, _ = fmt.Fprintf(os.Stdout, "[NBIRTH] %s/%s (%d metrics)\n", groupID, nodeID, len(metrics))
 		},
 		OnDeviceBirth: func(groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
-			fmt.Fprintf(os.Stdout, "[DBIRTH] %s/%s/%s (%d metrics)\n", groupID, nodeID, deviceID, len(metrics))
+			_, _ = fmt.Fprintf(os.Stdout, "[DBIRTH] %s/%s/%s (%d metrics)\n", groupID, nodeID, deviceID, len(metrics))
 		},
 		OnNodeData: func(groupID, nodeID string, metrics []*pb.Payload_Metric) {
-			fmt.Fprintf(os.Stdout, "[NDATA]  %s/%s (%d metrics)\n", groupID, nodeID, len(metrics))
+			_, _ = fmt.Fprintf(os.Stdout, "[NDATA]  %s/%s (%d metrics)\n", groupID, nodeID, len(metrics))
 		},
 		OnDeviceData: func(groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
-			fmt.Fprintf(os.Stdout, "[DDATA]  %s/%s/%s (%d metrics)\n", groupID, nodeID, deviceID, len(metrics))
+			_, _ = fmt.Fprintf(os.Stdout, "[DDATA]  %s/%s/%s (%d metrics)\n", groupID, nodeID, deviceID, len(metrics))
 		},
 		OnNodeDeath: func(groupID, nodeID string) {
-			fmt.Fprintf(os.Stdout, "[NDEATH] %s/%s\n", groupID, nodeID)
+			_, _ = fmt.Fprintf(os.Stdout, "[NDEATH] %s/%s\n", groupID, nodeID)
 		},
 		OnDeviceDeath: func(groupID, nodeID, deviceID string) {
-			fmt.Fprintf(os.Stdout, "[DDEATH] %s/%s/%s\n", groupID, nodeID, deviceID)
+			_, _ = fmt.Fprintf(os.Stdout, "[DDEATH] %s/%s/%s\n", groupID, nodeID, deviceID)
 		},
 	}
 
@@ -88,15 +88,15 @@ func runHost(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("connect: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Host %s online (broker: %s)\n", hostID, brokerURL)
-	fmt.Fprintf(os.Stderr, "Listening for edge activity (Ctrl+C to stop)\n")
+	_, _ = fmt.Fprintf(os.Stderr, "Host %s online (broker: %s)\n", hostID, brokerURL)
+	_, _ = fmt.Fprintf(os.Stderr, "Listening for edge activity (Ctrl+C to stop)\n")
 
 	<-ctx.Done()
-	fmt.Fprintln(os.Stderr, "\nShutting down host...")
+	_, _ = fmt.Fprintln(os.Stderr, "\nShutting down host...")
 	shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutCancel()
 	_ = app.Disconnect(shutCtx)
-	fmt.Fprintln(os.Stderr, "Disconnected")
+	_, _ = fmt.Fprintln(os.Stderr, "Disconnected")
 	return nil
 }
 

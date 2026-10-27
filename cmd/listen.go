@@ -83,7 +83,7 @@ func runListen(cmd *cobra.Command, args []string) error {
 
 		p, err := payload.Decode(data)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "decode error on %s: %v\n", topicStr, err)
+			_, _ = fmt.Fprintf(os.Stderr, "decode error on %s: %v\n", topicStr, err)
 			return
 		}
 		printer.PrintMessage(t, p)
@@ -94,9 +94,9 @@ func runListen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("subscribe: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Listening on %s (broker: %s)\n", subTopic, brokerURL)
+	_, _ = fmt.Fprintf(os.Stderr, "Listening on %s (broker: %s)\n", subTopic, brokerURL)
 	<-ctx.Done()
-	fmt.Fprintln(os.Stderr, "\nShutting down...")
+	_, _ = fmt.Fprintln(os.Stderr, "\nShutting down...")
 	return nil
 }
 

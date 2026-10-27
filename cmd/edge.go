@@ -69,10 +69,10 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		PrimaryHostID: edgePrimaryHost,
 		Logger:        &cliLogger{},
 		OnNodeCmd: func(deviceID string, metrics []*pb.Payload_Metric) {
-			fmt.Fprintf(os.Stderr, "NCMD received: %d metric(s)\n", len(metrics))
+			_, _ = fmt.Fprintf(os.Stderr, "NCMD received: %d metric(s)\n", len(metrics))
 		},
 		OnDeviceCmd: func(deviceID string, metrics []*pb.Payload_Metric) {
-			fmt.Fprintf(os.Stderr, "DCMD for %s: %d metric(s)\n", deviceID, len(metrics))
+			_, _ = fmt.Fprintf(os.Stderr, "DCMD for %s: %d metric(s)\n", deviceID, len(metrics))
 		},
 	}
 
@@ -87,7 +87,7 @@ func runEdge(cmd *cobra.Command, args []string) error {
 	if err := node.Connect(ctx); err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "Connected to %s as %s/%s\n", brokerURL, edgeGroup, edgeNode)
+	_, _ = fmt.Fprintf(os.Stderr, "Connected to %s as %s/%s\n", brokerURL, edgeGroup, edgeNode)
 
 	birthMetrics, err := buildEdgeMetrics(edgeMetrics)
 	if err != nil {
@@ -97,14 +97,14 @@ func runEdge(cmd *cobra.Command, args []string) error {
 	if err := node.PublishBirth(ctx, birthMetrics); err != nil {
 		return fmt.Errorf("publish NBIRTH: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "Published NBIRTH (%d metrics)\n", len(birthMetrics))
+	_, _ = fmt.Fprintf(os.Stderr, "Published NBIRTH (%d metrics)\n", len(birthMetrics))
 
 	for _, devID := range edgeDevices {
 		devMetric, _ := payload.NewMetric("status", pb.DataType_Boolean, true)
 		if err := node.PublishDeviceBirth(ctx, devID, []*pb.Payload_Metric{devMetric}); err != nil {
 			return fmt.Errorf("publish DBIRTH %s: %w", devID, err)
 		}
-		fmt.Fprintf(os.Stderr, "Published DBIRTH for %s\n", devID)
+		_, _ = fmt.Fprintf(os.Stderr, "Published DBIRTH for %s\n", devID)
 	}
 
 	ticker := time.NewTicker(edgeInterval)
@@ -124,19 +124,19 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "Publishing data every %s (Ctrl+C to stop)\n", edgeInterval)
+	_, _ = fmt.Fprintf(os.Stderr, "Publishing data every %s (Ctrl+C to stop)\n", edgeInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Fprintln(os.Stderr, "\nShutting down edge node...")
+			_, _ = fmt.Fprintln(os.Stderr, "\nShutting down edge node...")
 			shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer shutCancel()
 			for _, devID := range edgeDevices {
 				_ = node.PublishDeviceDeath(shutCtx, devID)
-				fmt.Fprintf(os.Stderr, "Published DDEATH for %s\n", devID)
+				_, _ = fmt.Fprintf(os.Stderr, "Published DDEATH for %s\n", devID)
 			}
 			_ = node.Disconnect(shutCtx)
-			fmt.Fprintln(os.Stderr, "Disconnected")
+			_, _ = fmt.Fprintln(os.Stderr, "Disconnected")
 			return nil
 
 		case <-ticker.C:
@@ -149,9 +149,9 @@ func runEdge(cmd *cobra.Command, args []string) error {
 				dataMetrics = append(dataMetrics, m)
 			}
 			if err := node.PublishNodeData(ctx, dataMetrics); err != nil {
-				fmt.Fprintf(os.Stderr, "publish NDATA: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "publish NDATA: %v\n", err)
 			} else {
-				fmt.Fprintf(os.Stderr, "Published NDATA (%d metrics)\n", len(dataMetrics))
+				_, _ = fmt.Fprintf(os.Stderr, "Published NDATA (%d metrics)\n", len(dataMetrics))
 			}
 		}
 	}
@@ -170,15 +170,14 @@ func buildEdgeMetrics(specs []string) ([]*pb.Payload_Metric, error) {
 type cliLogger struct{}
 
 func (l *cliLogger) Debugf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", args...)
+	_, _ = fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", args...)
 }
 func (l *cliLogger) Infof(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, "[INFO]  "+format+"\n", args...)
+	_, _ = fmt.Fprintf(os.Stderr, "[INFO]  "+format+"\n", args...)
 }
 func (l *cliLogger) Warnf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, "[WARN]  "+format+"\n", args...)
+	_, _ = fmt.Fprintf(os.Stderr, "[WARN]  "+format+"\n", args...)
 }
 func (l *cliLogger) Errorf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, "[ERROR] "+format+"\n", args...)
+	_, _ = fmt.Fprintf(os.Stderr, "[ERROR] "+format+"\n", args...)
 }
-

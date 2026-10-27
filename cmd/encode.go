@@ -52,7 +52,7 @@ func runEncode(cmd *cobra.Command, args []string) error {
 		if err := os.WriteFile(encodeFile, data, 0644); err != nil {
 			return fmt.Errorf("write %s: %w", encodeFile, err)
 		}
-		fmt.Fprintf(os.Stderr, "Wrote %d bytes to %s\n", len(data), encodeFile)
+		_, _ = fmt.Fprintf(os.Stderr, "Wrote %d bytes to %s\n", len(data), encodeFile)
 		return nil
 	}
 
