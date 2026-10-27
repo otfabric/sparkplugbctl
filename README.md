@@ -369,9 +369,9 @@ sparkplugbctl version
 ```
 
 ```
-sparkplugbctl v0.1.0
-  commit:  abc1234
-  built:   2026-10-27T02:00:00Z
+sparkplugbctl 0.1.0
+  commit:  e38c75bdb1b909fb91ff3f735d746cf42145f169
+  built:   2026-10-27T12:12:45Z
   library: go-sparkplugb v0.1.2
   go:      go1.27.3
   os/arch: darwin/arm64
