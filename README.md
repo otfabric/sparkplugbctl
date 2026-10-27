@@ -29,6 +29,9 @@ echo "CJkBEP..." | sparkplugbctl decode --base64
 
 # Run a host application that tracks every edge node
 sparkplugbctl host --host-id scada --broker tcp://localhost:1883
+
+# Run a passive application (no STATE, just tracking)
+sparkplugbctl app --broker tcp://localhost:1883
 ```
 
 ---
@@ -41,6 +44,7 @@ sparkplugbctl
 ├── publish        Publish a single Sparkplug B payload with typed metrics
 ├── edge           Simulate a Sparkplug B edge node (birth, data, rebirth)
 ├── host           Simulate a Sparkplug B host application (STATE, tracking)
+├── app            Run a Sparkplug B application (subscriber, no STATE)
 ├── decode         Decode a binary Sparkplug B Protobuf payload (hex, base64, file)
 ├── encode         Encode typed metrics into binary Sparkplug B Protobuf
 ├── completion     Generate shell completion (bash|zsh|fish|powershell)
@@ -216,6 +220,38 @@ Example output:
 2026-10-27T12:00:06Z  NDATA          plant/gateway        seq=1  metrics=1
 2026-10-27T12:00:30Z  NDEATH         plant/gateway        bdSeq=0
 2026-10-27T12:00:30Z  STATE offline  host=scada
+```
+
+### app
+
+Run a Sparkplug B application that subscribes to all Sparkplug B traffic and
+tracks edge nodes and devices — without publishing STATE birth/death
+certificates. Use this when you want passive monitoring or when another tool is
+the primary host.
+
+```bash
+# Monitor all edge activity
+sparkplugbctl app --broker tcp://localhost:1883
+
+# Filter by group
+sparkplugbctl app --group plant
+
+# JSON output for scripting
+sparkplugbctl app --json
+```
+
+Example output:
+
+```
+Application mode (no STATE) — broker: tcp://localhost:1883
+Listening for edge activity (Ctrl+C to stop)
+2026-10-27T12:00:01+00:00  [NBIRTH] plant/gateway (5 metrics)
+2026-10-27T12:00:01+00:00  [DBIRTH] plant/gateway/motor1 (2 metrics)
+2026-10-27T12:00:06+00:00  [NDATA]  plant/gateway (1 metrics)
+2026-10-27T12:00:30+00:00  [NDEATH] plant/gateway
+^C
+Shutting down application...
+Disconnected
 ```
 
 ### publish

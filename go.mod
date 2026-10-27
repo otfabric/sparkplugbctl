@@ -7,6 +7,8 @@ require (
 	github.com/spf13/cobra v1.10.2
 )
 
+replace github.com/otfabric/go-sparkplugb => ../go-sparkplugb
+
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
