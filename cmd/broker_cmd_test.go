@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/otfabric/go-sparkplugb/edge"
 	"github.com/otfabric/go-sparkplugb/host"
@@ -153,6 +154,30 @@ func TestListen(t *testing.T) {
 	}
 }
 
+// TestListenState checks that listen prints a STATE message (JSON) and
+// reports one that is not a STATE payload.
+func TestListenState(t *testing.T) {
+	url := startBroker(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	r := start(ctx, nil, "listen", "--broker", url)
+	eventually(t, "listening", contains(r.stderr, "Listening on spBv1.0/#"))
+
+	pub := rawClient(t, url, "pub")
+	for _, data := range []string{`{"online":true,"timestamp":1767225600000}`, `not json`} {
+		if err := pub.Publish(context.Background(), "spBv1.0/STATE/scada", 0, false, []byte(data)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	eventually(t, "STATE", contains(r.stdout, "[STATE] spBv1.0/STATE/scada\n  online=true  ts=2026-01-01T00:00:00Z"))
+	eventually(t, "bad STATE", contains(r.stderr, "decode error on spBv1.0/STATE/scada: STATE payload"))
+
+	cancel()
+	if err := r.wait(t); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestListenErrors(t *testing.T) {
 	if _, _, err := run(t, nil, "listen", "--tls-cert", "/nope.crt", "--tls-key", "/nope.key"); err == nil {
 		t.Error("want TLS error")
@@ -295,6 +320,33 @@ func TestEdge(t *testing.T) {
 	}
 }
 
+// TestEdgePrimaryHost checks that the edge waits for its primary host: no
+// birth or data until the host's STATE is online, then the births and data.
+func TestEdgePrimaryHost(t *testing.T) {
+	url := startBroker(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	r := start(ctx, nil, "edge", "--broker", url, "--group", "g", "--node", "n", "--device", "d1",
+		"--interval", "20ms", "--primary-host", "scada")
+	eventually(t, "waiting", contains(r.stderr, "Waiting for primary host scada to be online"))
+	time.Sleep(100 * time.Millisecond)
+	if s := r.stderr.String(); strings.Contains(s, "Published") || strings.Contains(s, "publish NBIRTH") {
+		t.Fatalf("published before the primary host was online:\n%s", s)
+	}
+
+	pub := rawClient(t, url, "scada")
+	if err := pub.Publish(context.Background(), "spBv1.0/STATE/scada", 1, true, []byte(`{"online":true,"timestamp":1}`)); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "births", contains(r.stderr, "Published DBIRTH for d1"))
+	eventually(t, "data", contains(r.stderr, "Published NDATA"))
+
+	cancel()
+	if err := r.wait(t); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestEdgeErrors(t *testing.T) {
 	url := startBroker(t)
 	cases := map[string][]string{
@@ -302,7 +354,6 @@ func TestEdgeErrors(t *testing.T) {
 		"tls":           {"edge", "--group", "g", "--node", "n", "--tls-cert", "/nope.crt", "--tls-key", "/nope.key"},
 		"connect":       {"edge", "--group", "g", "--node", "n", "--client-id", "c", "--broker", deadBroker},
 		"bad metric":    {"edge", "--group", "g", "--node", "n", "--broker", url, "--metric", "bad"},
-		"no primary":    {"edge", "--group", "g", "--node", "n2", "--broker", url, "--primary-host", "absent"},
 	}
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {

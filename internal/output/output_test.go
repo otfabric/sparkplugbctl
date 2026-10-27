@@ -77,6 +77,43 @@ func TestPrintMessageJSON(t *testing.T) {
 	}
 }
 
+func TestPrintState(t *testing.T) {
+	tp := topic.Topic{Type: topic.STATE, EdgeNodeID: "scada"}
+	var buf bytes.Buffer
+	if err := (&Printer{W: &buf}).PrintState(tp, []byte(`{"online":false,"timestamp":1700000000000}`)); err != nil {
+		t.Fatal(err)
+	}
+	if want := "[STATE] spBv1.0/STATE/scada\n  online=false  ts=2023-11-14T22:13:20Z\n\n"; buf.String() != want {
+		t.Errorf("text = %q, want %q", buf.String(), want)
+	}
+
+	buf.Reset()
+	if err := (&Printer{W: &buf}).PrintState(tp, []byte(`{"online":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "ts=") {
+		t.Errorf("unexpected timestamp:\n%s", buf.String())
+	}
+
+	buf.Reset()
+	if err := (&Printer{W: &buf, JSON: true}).PrintState(tp, []byte(`{"online":true,"timestamp":1700000000000}`)); err != nil {
+		t.Fatal(err)
+	}
+	var sv StateView
+	if err := json.Unmarshal(buf.Bytes(), &sv); err != nil {
+		t.Fatal(err)
+	}
+	if sv != (StateView{Topic: "spBv1.0/STATE/scada", Type: "STATE", HostID: "scada", Online: true, Time: "2023-11-14T22:13:20Z"}) {
+		t.Errorf("view = %+v", sv)
+	}
+
+	for _, bad := range []string{`not json`, `{"timestamp":1}`} {
+		if err := (&Printer{W: &buf}).PrintState(tp, []byte(bad)); err == nil {
+			t.Errorf("PrintState(%s): want error", bad)
+		}
+	}
+}
+
 func TestPrintPayload(t *testing.T) {
 	var buf bytes.Buffer
 	(&Printer{W: &buf}).PrintPayload(samplePayload())

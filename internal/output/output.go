@@ -31,6 +31,46 @@ type MessageView struct {
 	Metrics  []MetricView `json:"metrics"`
 }
 
+// StateView is a primary host's STATE message: JSON, not protobuf.
+type StateView struct {
+	Topic  string `json:"topic"`
+	Type   string `json:"type"`
+	HostID string `json:"host_id"`
+	Online bool   `json:"online"`
+	Time   string `json:"timestamp"`
+}
+
+// PrintState prints the STATE message data of topic t (the JSON payload
+// {"online", "timestamp"} of Sparkplug 3.0).
+func (p *Printer) PrintState(t topic.Topic, data []byte) error {
+	var st struct {
+		Online    *bool  `json:"online"`
+		Timestamp uint64 `json:"timestamp"`
+	}
+	if err := json.Unmarshal(data, &st); err != nil {
+		return fmt.Errorf("STATE payload: %w", err)
+	}
+	if st.Online == nil {
+		return fmt.Errorf("STATE payload: no \"online\"")
+	}
+	sv := StateView{Topic: t.String(), Type: t.Type.String(), HostID: t.EdgeNodeID, Online: *st.Online}
+	if st.Timestamp != 0 {
+		sv.Time = time.UnixMilli(int64(st.Timestamp)).UTC().Format(time.RFC3339)
+	}
+	if p.JSON {
+		enc := json.NewEncoder(p.W)
+		enc.SetIndent("", "  ")
+		return enc.Encode(sv)
+	}
+	_, _ = fmt.Fprintf(p.W, "[%s] %s\n", t.Type, t.String())
+	_, _ = fmt.Fprintf(p.W, "  online=%t", sv.Online)
+	if sv.Time != "" {
+		_, _ = fmt.Fprintf(p.W, "  ts=%s", sv.Time)
+	}
+	_, _ = fmt.Fprint(p.W, "\n\n")
+	return nil
+}
+
 type MetricView struct {
 	Name      string `json:"name"`
 	Alias     uint64 `json:"alias,omitempty"`

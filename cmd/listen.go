@@ -81,6 +81,13 @@ func runListen(cmd *cobra.Command, args []string) error {
 			return
 		}
 
+		if t.Type == topic.STATE {
+			if err := printer.PrintState(t, data); err != nil {
+				_, _ = fmt.Fprintf(stderr, "decode error on %s: %v\n", topicStr, err)
+			}
+			return
+		}
+
 		p, err := payload.Decode(data)
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "decode error on %s: %v\n", topicStr, err)

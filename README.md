@@ -25,7 +25,7 @@ sparkplugbctl edge --group plant --node gw1 \
   --metric "temperature:Double=22.5" --interval 2s
 
 # Decode a base64-encoded Sparkplug payload
-echo "CJkBEP..." | sparkplugbctl decode --base64
+base64 -d < payload.b64 | sparkplugbctl decode
 
 # Run a host application that tracks every edge node
 sparkplugbctl host --host-id scada --broker tcp://localhost:1883
@@ -40,12 +40,12 @@ sparkplugbctl app --broker tcp://localhost:1883
 
 ```
 sparkplugbctl
-├── listen         Subscribe to spBv1.0/# and decode Sparkplug payloads live
+├── listen         Subscribe to spBv1.0/# and decode Sparkplug payloads and STATE live
 ├── publish        Publish a single Sparkplug B payload with typed metrics
 ├── edge           Simulate a Sparkplug B edge node (birth, data, rebirth)
 ├── host           Simulate a Sparkplug B host application (STATE, tracking)
 ├── app            Run a Sparkplug B application (subscriber, no STATE)
-├── decode         Decode a binary Sparkplug B Protobuf payload (hex, base64, file)
+├── decode         Decode a binary Sparkplug B Protobuf payload (stdin or file)
 ├── encode         Encode typed metrics into binary Sparkplug B Protobuf
 ├── completion     Generate shell completion (bash|zsh|fish|powershell)
 └── version        Print version and build info
@@ -142,7 +142,8 @@ Replace the binary with a newer release archive, or re-run `go install`.
 
 ### listen
 
-Subscribe to all Sparkplug B topics and decode payloads in real time.
+Subscribe to all Sparkplug B topics and decode payloads in real time. A
+primary host's STATE message (JSON) is shown as such.
 
 ```bash
 # All traffic
@@ -158,21 +159,36 @@ sparkplugbctl listen --json
 Example output:
 
 ```
-[NBIRTH] spBv1.0/plant/NBIRTH/gateway
-  seq=0  ts=2026-10-27T12:00:00Z
-  bdSeq          Int64    1
-  temperature    Double   22.5    quality=GOOD
-  humidity       Float    55.0
+[STATE] spBv1.0/STATE/scada
+  online=true  ts=2026-10-27T11:12:18Z
 
-[NDATA] spBv1.0/plant/NDATA/gateway
-  seq=1  ts=2026-10-27T12:00:05Z
-  temperature    Double   23.1
+[NBIRTH] spBv1.0/plant/NBIRTH/gw1
+  seq=0  ts=2026-10-27T11:12:18Z
+  bdSeq                 Int64    1
+  Node Control/Rebirth  Boolean  false
+  temperature           Double   22.5
+
+[DBIRTH] spBv1.0/plant/DBIRTH/gw1/sensor1
+  seq=1  ts=2026-10-27T11:12:18Z
+  status  Boolean  true
+
+[NDATA] spBv1.0/plant/NDATA/gw1
+  seq=2  ts=2026-10-27T11:12:20Z
+  temperature  Double  22.816084857923634
 ```
+
+A metric with a quality property shows it, e.g. `quality=STALE`.
 
 ### edge
 
 Simulate a Sparkplug B edge node with automatic lifecycle management and
-periodic data publishing.
+periodic data publishing. Each device is born with one metric, `status`
+(Boolean). Received NCMD and DCMD messages are reported; a rebirth request
+is answered with new births.
+
+With `--primary-host`, the node waits for that host's STATE to be online
+before its births. When the host goes offline, the node publishes NDEATH,
+reconnects and waits again, as Sparkplug 3.0.0 requires.
 
 ```bash
 # Default metrics (temperature, humidity, pressure)
@@ -192,14 +208,20 @@ sparkplugbctl edge --group plant --node gw1 --primary-host scada
 Example output:
 
 ```
-2026-10-27T12:00:00Z  state: disconnected -> connecting
-2026-10-27T12:00:00Z  state: connecting -> connected
-2026-10-27T12:00:00Z  NBIRTH published  seq=0  metrics=3
-2026-10-27T12:00:00Z  DBIRTH published  device=sensor1  seq=1  metrics=2
-2026-10-27T12:00:02Z  NDATA  published  seq=2  temperature=22.6
-2026-10-27T12:00:04Z  NDATA  published  seq=3  temperature=22.7
+[INFO]  state: disconnected -> connecting
+[INFO]  state: connecting -> subscribing
+[INFO]  state: subscribing -> waiting_for_primary_host
+Connected to tcp://localhost:1883 as plant/gw1
+Waiting for primary host scada to be online
+Publishing data every 2s (Ctrl+C to stop)
+[INFO]  state: waiting_for_primary_host -> online
+Published NBIRTH (1 metrics)
+Published DBIRTH for sensor1
+Published NDATA (1 metrics)
 ^C
-2026-10-27T12:00:05Z  shutting down...
+Shutting down edge node...
+Published DDEATH for sensor1
+Disconnected
 ```
 
 ### host
@@ -214,12 +236,17 @@ sparkplugbctl host --host-id scada --broker tcp://localhost:1883
 Example output:
 
 ```
-2026-10-27T12:00:00Z  STATE online   host=scada
-2026-10-27T12:00:01Z  NBIRTH         plant/gateway        metrics=5
-2026-10-27T12:00:01Z  DBIRTH         plant/gateway/motor1  metrics=2
-2026-10-27T12:00:06Z  NDATA          plant/gateway        seq=1  metrics=1
-2026-10-27T12:00:30Z  NDEATH         plant/gateway        bdSeq=0
-2026-10-27T12:00:30Z  STATE offline  host=scada
+[INFO]  host state: disconnected -> connecting
+[INFO]  host state: connecting -> connected
+Host scada online (broker: tcp://localhost:1883)
+Listening for edge activity (Ctrl+C to stop)
+[NBIRTH] plant/gw1 (3 metrics)
+[DBIRTH] plant/gw1/sensor1 (1 metrics)
+[NDATA]  plant/gw1 (1 metrics)
+^C
+Shutting down host...
+[INFO]  host state: connected -> disconnected
+Disconnected
 ```
 
 ### app
@@ -243,14 +270,18 @@ sparkplugbctl app --json
 Example output:
 
 ```
+[INFO]  application state: disconnected -> connecting
+[INFO]  application state: connecting -> connected
 Application mode (no STATE) — broker: tcp://localhost:1883
 Listening for edge activity (Ctrl+C to stop)
-2026-10-27T12:00:01+00:00  [NBIRTH] plant/gateway (5 metrics)
-2026-10-27T12:00:01+00:00  [DBIRTH] plant/gateway/motor1 (2 metrics)
-2026-10-27T12:00:06+00:00  [NDATA]  plant/gateway (1 metrics)
-2026-10-27T12:00:30+00:00  [NDEATH] plant/gateway
+2026-10-27T12:12:18+01:00  [NBIRTH] plant/gw1 (3 metrics)
+2026-10-27T12:12:18+01:00  [DBIRTH] plant/gw1/sensor1 (1 metrics)
+2026-10-27T12:12:20+01:00  [NDATA]  plant/gw1 (1 metrics)
+2026-10-27T12:12:30+01:00  [NDEATH] plant/gw1
 ^C
 Shutting down application...
+[INFO]  application state: connected -> disconnected
+[INFO]  application state: disconnected -> closed
 Disconnected
 ```
 
@@ -268,17 +299,19 @@ sparkplugbctl publish \
 
 ### decode
 
-Decode a binary Sparkplug B Protobuf payload from hex, base64, or a file.
+Decode a binary Sparkplug B Protobuf payload from stdin or a file. Convert
+hex or base64 to binary first.
 
 ```bash
-# From hex on stdin
-echo "0a0b74656d7065726174757265" | sparkplugbctl decode
-
-# From base64
-echo "CJkBEP..." | sparkplugbctl decode --base64
-
-# From file
+# From a file
 sparkplugbctl decode --file payload.bin
+
+# Binary on stdin
+sparkplugbctl encode --metric "temperature:Double=23.1" | sparkplugbctl decode
+
+# From hex or base64
+xxd -r -p payload.hex | sparkplugbctl decode
+base64 -d < payload.b64 | sparkplugbctl decode
 
 # JSON output
 sparkplugbctl decode --file payload.bin --json
@@ -287,11 +320,9 @@ sparkplugbctl decode --file payload.bin --json
 Example output:
 
 ```
-Sparkplug B Payload
-  seq=5  ts=2026-10-27T12:00:00Z
-  temperature    Double   23.1
-  status         Boolean  true
-  humidity       Float    55.0    quality=GOOD
+seq=5  ts=2026-10-27T11:09:22Z
+  temperature  Double   23.1
+  status       Boolean  true
 ```
 
 ### encode
@@ -305,13 +336,12 @@ sparkplugbctl encode \
   --metric "status:Boolean=true" \
   > payload.bin
 
-# To file
-sparkplugbctl encode --file payload.bin \
+# To file, with a sequence number
+sparkplugbctl encode --file payload.bin --seq 5 \
   --metric "temperature:Double=22.5"
 
 # Base64 output
-sparkplugbctl encode --base64 \
-  --metric "temperature:Double=22.5"
+sparkplugbctl encode --metric "temperature:Double=22.5" | base64
 ```
 
 ### completion
@@ -372,12 +402,16 @@ Runnable shell scripts are in the [`examples/`](examples/) directory:
 
 ## Supported metric types
 
-`Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`,
-`Float`, `Double`, `Boolean`, `String`, `Text`, `UUID`, `Bytes`, `DateTime`,
-`DataSet`, `Template`
+`--metric` (on `publish`, `encode` and `edge`) takes `Int8`, `Int16`,
+`Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `Float`, `Double`,
+`Boolean` (or `Bool`), `String`, `Text`, `UUID` and `Bytes` (the value's
+UTF-8 bytes); type names are case-insensitive.
 
 Metric syntax: `name:Type=value` — for example `temperature:Double=22.5` or
 `active:Boolean=true`.
+
+`listen` and `decode` show metrics of every datatype a payload carries,
+including `DateTime`, arrays, `DataSet` and `Template`.
 
 ---
 
@@ -392,6 +426,10 @@ precedence when both are set.
 | `SPARKPLUGBCTL_CLIENT_ID` | `--client-id` | auto-generated |
 | `SPARKPLUGBCTL_USERNAME` | `--username` | |
 | `SPARKPLUGBCTL_PASSWORD` | `--password` | |
+| `SPARKPLUGBCTL_TLS_CERT` | `--tls-cert` | |
+| `SPARKPLUGBCTL_TLS_KEY` | `--tls-key` | |
+| `SPARKPLUGBCTL_TLS_CA` | `--tls-ca` | |
+| `SPARKPLUGBCTL_JSON` | `--json` | `false` |
 
 ---
 

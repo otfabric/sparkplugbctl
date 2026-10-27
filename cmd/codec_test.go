@@ -35,6 +35,31 @@ func TestVersion(t *testing.T) {
 	}
 }
 
+// TestEnvironment checks that a global flag comes from its SPARKPLUGBCTL_
+// variable, that the command line takes precedence, and that a bad value
+// is an error naming the variable.
+func TestEnvironment(t *testing.T) {
+	t.Setenv("SPARKPLUGBCTL_JSON", "true")
+	if _, _, err := run(t, nil, "encode", "--metric", "x:Int32=1", "--file", filepath.Join(t.TempDir(), "p.bin")); err != nil {
+		t.Fatal(err)
+	}
+	if !jsonOut {
+		t.Error("SPARKPLUGBCTL_JSON=true did not set --json")
+	}
+
+	if _, _, err := run(t, nil, "encode", "--json=false", "--metric", "x:Int32=1", "--file", filepath.Join(t.TempDir(), "p.bin")); err != nil {
+		t.Fatal(err)
+	}
+	if jsonOut {
+		t.Error("--json=false on the command line did not take precedence")
+	}
+
+	t.Setenv("SPARKPLUGBCTL_JSON", "maybe")
+	if _, _, err := run(t, nil, "version"); err == nil || !strings.Contains(err.Error(), "SPARKPLUGBCTL_JSON") {
+		t.Errorf("err = %v, want an error naming SPARKPLUGBCTL_JSON", err)
+	}
+}
+
 func TestExecute(t *testing.T) {
 	resetFlags(rootCmd)
 	var out, errOut bytes.Buffer

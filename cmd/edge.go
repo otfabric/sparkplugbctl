@@ -62,6 +62,10 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		cid = fmt.Sprintf("sparkplugbctl-edge-%s-%s", edgeGroup, edgeNode)
 	}
 
+	// The node is Online once connected, or, with a primary host, once that
+	// host's STATE is online; the births follow each time. OnState runs with
+	// the node's lock held, so it only signals.
+	online := make(chan struct{}, 1)
 	cfg := edge.Config{
 		GroupID:       edgeGroup,
 		EdgeNodeID:    edgeNode,
@@ -69,6 +73,14 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		ClientID:      cid,
 		PrimaryHostID: edgePrimaryHost,
 		Logger:        &cliLogger{w: stderr},
+		OnState: func(_, s edge.State) {
+			if s == edge.Online {
+				select {
+				case online <- struct{}{}:
+				default:
+				}
+			}
+		},
 		OnNodeCmd: func(deviceID string, metrics []*pb.Payload_Metric) {
 			_, _ = fmt.Fprintf(stderr, "NCMD received: %d metric(s)\n", len(metrics))
 		},
@@ -89,23 +101,28 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("connect: %w", err)
 	}
 	_, _ = fmt.Fprintf(stderr, "Connected to %s as %s/%s\n", brokerURL, edgeGroup, edgeNode)
+	if edgePrimaryHost != "" && node.State() != edge.Online {
+		_, _ = fmt.Fprintf(stderr, "Waiting for primary host %s to be online\n", edgePrimaryHost)
+	}
 
 	birthMetrics, err := buildEdgeMetrics(edgeMetrics)
 	if err != nil {
 		return err
 	}
 
-	if err := node.PublishBirth(ctx, birthMetrics); err != nil {
-		return fmt.Errorf("publish NBIRTH: %w", err)
-	}
-	_, _ = fmt.Fprintf(stderr, "Published NBIRTH (%d metrics)\n", len(birthMetrics))
-
-	for _, devID := range edgeDevices {
-		devMetric, _ := payload.NewMetric("status", pb.DataType_Boolean, true)
-		if err := node.PublishDeviceBirth(ctx, devID, []*pb.Payload_Metric{devMetric}); err != nil {
-			return fmt.Errorf("publish DBIRTH %s: %w", devID, err)
+	births := func() error {
+		if err := node.PublishBirth(ctx, birthMetrics); err != nil {
+			return fmt.Errorf("publish NBIRTH: %w", err)
 		}
-		_, _ = fmt.Fprintf(stderr, "Published DBIRTH for %s\n", devID)
+		_, _ = fmt.Fprintf(stderr, "Published NBIRTH (%d metrics)\n", len(birthMetrics))
+		for _, devID := range edgeDevices {
+			devMetric, _ := payload.NewMetric("status", pb.DataType_Boolean, true)
+			if err := node.PublishDeviceBirth(ctx, devID, []*pb.Payload_Metric{devMetric}); err != nil {
+				return fmt.Errorf("publish DBIRTH %s: %w", devID, err)
+			}
+			_, _ = fmt.Fprintf(stderr, "Published DBIRTH for %s\n", devID)
+		}
+		return nil
 	}
 
 	ticker := time.NewTicker(edgeInterval)
@@ -140,7 +157,15 @@ func runEdge(cmd *cobra.Command, args []string) error {
 			_, _ = fmt.Fprintln(stderr, "Disconnected")
 			return nil
 
+		case <-online:
+			if err := births(); err != nil {
+				_, _ = fmt.Fprintf(stderr, "%v\n", err)
+			}
+
 		case <-ticker.C:
+			if node.State() != edge.Online {
+				continue
+			}
 			dataMetrics := make([]*pb.Payload_Metric, 0, len(values))
 			for name, val := range values {
 				delta := (rand.Float64() - 0.5) * 2.0
