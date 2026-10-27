@@ -7,10 +7,8 @@ github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aN
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/otfabric/go-sparkplugb v0.0.0-20261027015859-0f484c8ae2fd h1:k7tE4FDVx7Jte5MLSh8Hetgw8sSbiMN3lp9vg7Hf7TM=
-github.com/otfabric/go-sparkplugb v0.0.0-20261027015859-0f484c8ae2fd/go.mod h1:if1hemd2tdXJs3XEhxWj3mVVoJx89UHpBA4Rdyhncu8=
-github.com/otfabric/go-sparkplugb v0.0.0-20261027021148-7738a6f3f747 h1:IRyGgbkV0CP8nmAF4Q3nkzxl+KtTyFiQrDRexo55nIo=
-github.com/otfabric/go-sparkplugb v0.0.0-20261027021148-7738a6f3f747/go.mod h1:if1hemd2tdXJs3XEhxWj3mVVoJx89UHpBA4Rdyhncu8=
+github.com/otfabric/go-sparkplugb v0.0.0-20261027024523-31b541b0bf71 h1:w3m/P8MU289eL8NNX1qtzf4YLSrosclcAhe4n3EbMXg=
+github.com/otfabric/go-sparkplugb v0.0.0-20261027024523-31b541b0bf71/go.mod h1:if1hemd2tdXJs3XEhxWj3mVVoJx89UHpBA4Rdyhncu8=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/spf13/cobra v1.10.2 h1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=
 github.com/spf13/cobra v1.10.2/go.mod h1:7C1pvHqHw5A4vrJfjNwvOdzYu0Gml16OCs2GRiTUUS4=

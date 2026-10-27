@@ -346,6 +346,27 @@ sparkplugbctl v0.1.0 (abc1234 2026-10-27T02:00:00Z)
 
 ---
 
+## Examples
+
+Runnable shell scripts are in the [`examples/`](examples/) directory:
+
+| Script | Description |
+|--------|-------------|
+| [`01-listen.sh`](examples/01-listen.sh) | Subscribe to all Sparkplug B traffic |
+| [`02-edge-node.sh`](examples/02-edge-node.sh) | Simulate an edge node with devices and metrics |
+| [`03-host-app.sh`](examples/03-host-app.sh) | Run a host application (STATE + tracking) |
+| [`04-application.sh`](examples/04-application.sh) | Run an application subscriber (no STATE) |
+| [`05-encode-decode.sh`](examples/05-encode-decode.sh) | Encode metrics to binary and decode back |
+| [`06-publish.sh`](examples/06-publish.sh) | Publish a single Sparkplug B payload |
+| [`07-edge-with-host.sh`](examples/07-edge-with-host.sh) | Full scenario: host + edge + listener |
+
+```bash
+# Run any example (start a local broker first)
+./examples/02-edge-node.sh
+```
+
+---
+
 ## Supported metric types
 
 `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`,
