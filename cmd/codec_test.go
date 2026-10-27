@@ -28,7 +28,7 @@ func TestVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"sparkplugbctl " + Version, "commit:", "built:", "go:", "os/arch:"} {
+	for _, want := range []string{"sparkplugbctl " + Version, "commit:", "built:", "library: go-sparkplugb ", "go:", "os/arch:"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("version output missing %q:\n%s", want, out)
 		}
