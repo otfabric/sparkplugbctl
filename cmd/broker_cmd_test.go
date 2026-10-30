@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"context"
+	"net"
 	"strings"
 	"sync"
 	"testing"
@@ -361,5 +362,48 @@ func TestEdgeErrors(t *testing.T) {
 				t.Fatal("want error")
 			}
 		})
+	}
+}
+
+// Empty IDs pass the flags, and are refused as invalid input.
+func TestFailureExitCodes(t *testing.T) {
+	url := startBroker(t)
+	for name, c := range map[string]struct {
+		args []string
+		want int
+	}{
+		"edge, empty group":   {[]string{"edge", "--group", "", "--node", "n", "--broker", url}, ExitInvalidInput},
+		"host, empty host-id": {[]string{"host", "--host-id", "", "--broker", url}, ExitInvalidInput},
+		"app, empty broker":   {[]string{"app", "--broker", ""}, ExitInvalidInput},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, _, err := run(t, nil, c.args...)
+			if got := ExitCode(err); got != c.want {
+				t.Errorf("exit %d, want %d (%v)", got, c.want, err)
+			}
+		})
+	}
+}
+
+// A broker that accepts the connection and drops it fails the subscription
+// of listen, whether the drop is seen before or during the subscribe.
+func TestListenSubscribeFails(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go func() {
+		c, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		_, _ = c.Read(make([]byte, 1024))              // CONNECT
+		_, _ = c.Write([]byte{0x20, 0x02, 0x00, 0x00}) // CONNACK, accepted
+	}()
+	_, _, err = run(t, nil, "listen", "--broker", "tcp://"+ln.Addr().String(), "--client-id", "dropped")
+	if got := ExitCode(err); got != ExitTransport {
+		t.Errorf("exit %d, want %d (%v)", got, ExitTransport, err)
 	}
 }
