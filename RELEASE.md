@@ -1,5 +1,20 @@
 # sparkplugbctl Releases
 
+## v0.1.2
+
+**Date:** 2026-10-30
+**Previous release:** v0.1.1
+
+### Summary
+
+`--tls-ca` now works on its own.
+
+### Fixed
+
+- **`--tls-ca` (and `SPARKPLUGBCTL_TLS_CA`):** Was ignored unless `--tls-cert` and `--tls-key` were also given, so a broker with a private CA failed verification against the system roots. It now applies with or without a client certificate.
+
+---
+
 ## v0.1.1
 
 **Date:** 2026-10-27

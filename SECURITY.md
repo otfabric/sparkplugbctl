@@ -29,7 +29,7 @@ We will acknowledge your report within 48 hours and aim to provide a fix or miti
 Sparkplug B runs over MQTT and relies on the broker for authentication, authorization and transport encryption. `sparkplugbctl` can publish birth, death, data and command messages, so anyone running it with broker access can affect the infrastructure on that broker.
 
 - **Use `sparkplugbctl` only on brokers and networks you own or are authorized to access**
-- Use a `tls://` or `ssl://` broker URL with `--tls-cert` and `--tls-key` where the broker supports it. The TLS settings are applied only when both `--tls-cert` and `--tls-key` are given; `--tls-ca` alone has no effect
+- Use a `tls://` or `ssl://` broker URL where the broker supports it. `--tls-ca` sets the CA that verifies the broker, with or without a client certificate; without it the system roots are used. A client certificate needs both `--tls-cert` and `--tls-key`: one of them alone has no effect
 
 ### Credential Handling
 
