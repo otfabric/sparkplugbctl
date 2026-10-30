@@ -1,5 +1,16 @@
 # sparkplugbctl Releases
 
+## v0.3.0
+
+**Date:** 2026-10-30
+**Previous release:** v0.2.0
+
+### Dependencies
+
+- `golang.org/x/net` → v0.62.0 (govulncheck).
+
+---
+
 ## v0.2.0
 
 **Date:** 2026-10-30
