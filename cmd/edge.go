@@ -14,7 +14,6 @@ import (
 	"github.com/otfabric/go-sparkplugb/edge"
 	"github.com/otfabric/go-sparkplugb/payload"
 	pb "github.com/otfabric/go-sparkplugb/proto"
-	"github.com/otfabric/sparkplugbctl/internal/broker"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +51,7 @@ func init() {
 
 func runEdge(cmd *cobra.Command, args []string) error {
 	stderr := cmd.ErrOrStderr()
-	transport, err := broker.NewTransport(brokerOpts())
+	transport, err := newTransport(brokerOpts())
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
 	}

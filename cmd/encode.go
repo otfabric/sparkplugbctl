@@ -43,7 +43,7 @@ func runEncode(cmd *cobra.Command, args []string) error {
 	}
 
 	p := payload.NewPayload(encodeSeq, metrics...)
-	data, err := payload.Encode(p)
+	data, err := encodePayload(p)
 	if err != nil {
 		return withExit(ExitInvalidInput, fmt.Errorf("encode: %w", err))
 	}

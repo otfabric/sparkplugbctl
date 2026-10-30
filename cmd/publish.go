@@ -13,7 +13,6 @@ import (
 	"github.com/otfabric/go-sparkplugb/mqtt"
 	"github.com/otfabric/go-sparkplugb/payload"
 	pb "github.com/otfabric/go-sparkplugb/proto"
-	"github.com/otfabric/sparkplugbctl/internal/broker"
 	"github.com/spf13/cobra"
 )
 
@@ -52,12 +51,12 @@ func runPublish(cmd *cobra.Command, args []string) error {
 	}
 
 	p := payload.NewPayload(pubSeq, metrics...)
-	data, err := payload.Encode(p)
+	data, err := encodePayload(p)
 	if err != nil {
 		return withExit(ExitInvalidInput, fmt.Errorf("encode: %w", err))
 	}
 
-	transport, err := broker.NewTransport(brokerOpts())
+	transport, err := newTransport(brokerOpts())
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
 	}

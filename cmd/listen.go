@@ -39,7 +39,7 @@ func init() {
 
 func runListen(cmd *cobra.Command, args []string) error {
 	stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
-	transport, err := broker.NewTransport(brokerOpts())
+	transport, err := newTransport(brokerOpts())
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
 	}

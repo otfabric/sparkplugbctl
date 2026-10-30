@@ -12,7 +12,6 @@ import (
 	"github.com/otfabric/go-sparkplugb/host"
 	"github.com/otfabric/go-sparkplugb/mqtt"
 	pb "github.com/otfabric/go-sparkplugb/proto"
-	"github.com/otfabric/sparkplugbctl/internal/broker"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +33,7 @@ func init() {
 
 func runHost(cmd *cobra.Command, args []string) error {
 	stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
-	transport, err := broker.NewTransport(brokerOpts())
+	transport, err := newTransport(brokerOpts())
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
 	}
