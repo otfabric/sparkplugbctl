@@ -12,7 +12,6 @@ import (
 	"github.com/otfabric/go-sparkplugb/host"
 	"github.com/otfabric/go-sparkplugb/mqtt"
 	pb "github.com/otfabric/go-sparkplugb/proto"
-	"github.com/otfabric/sparkplugbctl/internal/broker"
 	"github.com/spf13/cobra"
 )
 
@@ -34,9 +33,9 @@ func init() {
 
 func runHost(cmd *cobra.Command, args []string) error {
 	stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
-	transport, err := broker.NewTransport(brokerOpts())
+	transport, err := newTransport(brokerOpts())
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	cid := clientID
@@ -71,7 +70,7 @@ func runHost(cmd *cobra.Command, args []string) error {
 
 	app, err := host.New(transport, cfg)
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
@@ -85,7 +84,7 @@ func runHost(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		// host.Connect uses transport internally; we need to connect transport first
 		// Actually, host.App.Connect calls transport.Connect itself
-		return fmt.Errorf("connect: %w", err)
+		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
 	}
 
 	_, _ = fmt.Fprintf(stderr, "Host %s online (broker: %s)\n", hostID, brokerURL)

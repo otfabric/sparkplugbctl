@@ -430,6 +430,9 @@ precedence when both are set.
 | `SPARKPLUGBCTL_TLS_KEY` | `--tls-key` | |
 | `SPARKPLUGBCTL_TLS_CA` | `--tls-ca` | |
 | `SPARKPLUGBCTL_JSON` | `--json` | `false` |
+| `SPARKPLUGBCTL_FORMAT` | `json` sets `--json`; `SPARKPLUGBCTL_OUTPUT_FORMAT` is accepted too | |
+
+Exit codes are listed in [docs/exitcodes.md](docs/exitcodes.md).
 
 ---
 

@@ -33,7 +33,12 @@ Every global flag can also be set by an environment variable: SPARKPLUGBCTL_
 and the flag name in upper case with "_" for "-", e.g. SPARKPLUGBCTL_BROKER.
 A flag on the command line takes precedence.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return applyEnv(cmd.Root().PersistentFlags())
+		commandEntered = true
+		pf := cmd.Root().PersistentFlags()
+		if err := applyEnv(pf); err != nil {
+			return withExit(ExitUsage, err)
+		}
+		return applyFormatEnv(pf.Changed("json"))
 	},
 }
 
@@ -70,6 +75,7 @@ func init() {
 }
 
 func Execute() error {
+	commandEntered = false
 	if err := rootCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		return err

@@ -19,6 +19,6 @@ var (
 func main() {
 	cmd.Version, cmd.Commit, cmd.BuildDate = version, commit, date
 	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
+		os.Exit(cmd.ExitCode(err))
 	}
 }

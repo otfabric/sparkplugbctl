@@ -45,7 +45,7 @@ func runDecode(cmd *cobra.Command, args []string) error {
 
 	p, err := payload.Decode(data)
 	if err != nil {
-		return fmt.Errorf("decode protobuf: %w", err)
+		return withExit(ExitInvalidInput, fmt.Errorf("decode protobuf: %w", err))
 	}
 
 	printer := &output.Printer{W: cmd.OutOrStdout(), JSON: jsonOut}
