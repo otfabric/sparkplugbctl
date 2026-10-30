@@ -39,18 +39,18 @@ func init() {
 func runEncode(cmd *cobra.Command, args []string) error {
 	metrics, err := parseMetrics(encodeMetrics)
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	p := payload.NewPayload(encodeSeq, metrics...)
 	data, err := payload.Encode(p)
 	if err != nil {
-		return fmt.Errorf("encode: %w", err)
+		return withExit(ExitInvalidInput, fmt.Errorf("encode: %w", err))
 	}
 
 	if encodeFile != "" {
 		if err := os.WriteFile(encodeFile, data, 0644); err != nil {
-			return fmt.Errorf("write %s: %w", encodeFile, err)
+			return withExit(ExitInternal, fmt.Errorf("write %s: %w", encodeFile, err))
 		}
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Wrote %d bytes to %s\n", len(data), encodeFile)
 		return nil

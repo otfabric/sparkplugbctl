@@ -40,7 +40,7 @@ func runApp(cmd *cobra.Command, args []string) error {
 	stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
 	transport, err := broker.NewTransport(brokerOpts())
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	cid := clientID
@@ -122,14 +122,14 @@ func runApp(cmd *cobra.Command, args []string) error {
 
 	a, err := app.New(transport, cfg)
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	if err := a.Connect(ctx); err != nil {
-		return fmt.Errorf("connect: %w", err)
+		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
 	}
 
 	_, _ = fmt.Fprintf(stderr, "Application mode (no STATE) — broker: %s\n", brokerURL)

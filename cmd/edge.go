@@ -54,7 +54,7 @@ func runEdge(cmd *cobra.Command, args []string) error {
 	stderr := cmd.ErrOrStderr()
 	transport, err := broker.NewTransport(brokerOpts())
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	cid := clientID
@@ -91,14 +91,14 @@ func runEdge(cmd *cobra.Command, args []string) error {
 
 	node, err := edge.New(transport, cfg)
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	if err := node.Connect(ctx); err != nil {
-		return fmt.Errorf("connect: %w", err)
+		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
 	}
 	_, _ = fmt.Fprintf(stderr, "Connected to %s as %s/%s\n", brokerURL, edgeGroup, edgeNode)
 	if edgePrimaryHost != "" && node.State() != edge.Online {
@@ -107,18 +107,18 @@ func runEdge(cmd *cobra.Command, args []string) error {
 
 	birthMetrics, err := buildEdgeMetrics(edgeMetrics)
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	births := func() error {
 		if err := node.PublishBirth(ctx, birthMetrics); err != nil {
-			return fmt.Errorf("publish NBIRTH: %w", err)
+			return withExit(ExitTransport, fmt.Errorf("publish NBIRTH: %w", err))
 		}
 		_, _ = fmt.Fprintf(stderr, "Published NBIRTH (%d metrics)\n", len(birthMetrics))
 		for _, devID := range edgeDevices {
 			devMetric, _ := payload.NewMetric("status", pb.DataType_Boolean, true)
 			if err := node.PublishDeviceBirth(ctx, devID, []*pb.Payload_Metric{devMetric}); err != nil {
-				return fmt.Errorf("publish DBIRTH %s: %w", devID, err)
+				return withExit(ExitTransport, fmt.Errorf("publish DBIRTH %s: %w", devID, err))
 			}
 			_, _ = fmt.Fprintf(stderr, "Published DBIRTH for %s\n", devID)
 		}

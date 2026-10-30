@@ -48,18 +48,18 @@ func init() {
 func runPublish(cmd *cobra.Command, args []string) error {
 	metrics, err := parseMetrics(pubMetrics)
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	p := payload.NewPayload(pubSeq, metrics...)
 	data, err := payload.Encode(p)
 	if err != nil {
-		return fmt.Errorf("encode: %w", err)
+		return withExit(ExitInvalidInput, fmt.Errorf("encode: %w", err))
 	}
 
 	transport, err := broker.NewTransport(brokerOpts())
 	if err != nil {
-		return err
+		return withExit(ExitInvalidInput, err)
 	}
 
 	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
@@ -78,12 +78,12 @@ func runPublish(cmd *cobra.Command, args []string) error {
 		Password:     password,
 	})
 	if err != nil {
-		return fmt.Errorf("connect: %w", err)
+		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
 	}
 	defer func() { _ = transport.Disconnect(context.Background()) }()
 
 	if err := transport.Publish(ctx, pubTopic, 0, false, data); err != nil {
-		return fmt.Errorf("publish: %w", err)
+		return withExit(ExitTransport, fmt.Errorf("publish: %w", err))
 	}
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Published %d metric(s) to %s\n", len(metrics), pubTopic)
