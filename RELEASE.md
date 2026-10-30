@@ -1,5 +1,30 @@
 # sparkplugbctl Releases
 
+## v0.2.0
+
+**Date:** 2026-10-30
+**Previous release:** v0.1.1
+
+### Summary
+
+Exit codes converge on the organisation table (ADR-0006). **Scripts that test for exit 1 must change.**
+
+| Case | Old | New |
+|---|---|---|
+| Invalid flags or arguments | 1 | 2 |
+| Unreadable input, payload that does not decode, invalid metric | 1 | 3 |
+| Connecting, subscribing or publishing failed | 1 | 4 |
+| Timeout | 1 | 5 |
+| Permission refused by the operating system | 1 | 9 |
+| Output or unexpected error | 1 | 10 |
+| Interrupted before a result | 1 | 130 |
+
+### Added
+
+- `SPARKPLUGBCTL_FORMAT` (canonical) and `SPARKPLUGBCTL_OUTPUT_FORMAT`: `json` has the effect of `--json`.
+
+---
+
 ## v0.1.1
 
 **Date:** 2026-10-27
