@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help build install fmt fmt-check lint lint-ci vet vuln test stress coverage cover coverage-gate check clean
+.PHONY: help build install fmt fmt-check lint lint-ci vet vuln test stress coverage cover coverage-gate check clean e2e build-all
 
 help: ## This help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -26,6 +26,17 @@ build: ## Build the sparkplugbctl binary into ./bin
 	@echo "Building sparkplugbctl"
 	@mkdir -p $(BIN_DIR)
 	@go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/sparkplugbctl .
+
+build-all: ## Cross-compile the release platforms into ./bin
+	@for p in linux/amd64 linux/arm64 linux/arm darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do \
+		os=$${p%/*}; cpu=$${p#*/}; ext=; [ $$os = windows ] && ext=.exe; \
+		echo "Building sparkplugbctl-$$os-$$cpu$$ext"; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$cpu GOARM=7 go build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/sparkplugbctl-$$os-$$cpu$$ext . || exit 1; done
+
+e2e: ## Build the binary and run the e2e suite against it
+	@mkdir -p bin
+	@go build -ldflags "$(LDFLAGS)" -o bin/sparkplugbctl .
+	@SPARKPLUGBCTL_E2E_BIN=$(CURDIR)/bin/sparkplugbctl SPARKPLUGBCTL_E2E_VERSION=$(VERSION) go test -count=1 -tags=e2e ./e2e/...
 
 install: ## Install sparkplugbctl into GOPATH/bin
 	@echo "Installing sparkplugbctl"
