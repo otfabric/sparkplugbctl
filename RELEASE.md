@@ -23,6 +23,10 @@ Exit codes converge on the organisation table (ADR-0006). **Scripts that test fo
 
 - `SPARKPLUGBCTL_FORMAT` (canonical) and `SPARKPLUGBCTL_OUTPUT_FORMAT`: `json` has the effect of `--json`.
 
+### Fixed
+
+- **`--tls-ca` (and `SPARKPLUGBCTL_TLS_CA`):** Was ignored unless `--tls-cert` and `--tls-key` were also given, so a broker with a private CA failed verification against the system roots. It now applies with or without a client certificate.
+
 ---
 
 ## v0.1.1

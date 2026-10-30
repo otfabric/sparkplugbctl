@@ -89,6 +89,26 @@ func TestNewTransportTLS(t *testing.T) {
 	}
 }
 
+// Regression: --tls-ca was ignored without a client certificate.
+func TestNewTransportCAOnly(t *testing.T) {
+	cert, _ := selfSigned(t, t.TempDir())
+
+	tr, err := NewTransport(Opts{TLSCA: cert})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.TLSConfig == nil || tr.TLSConfig.RootCAs == nil {
+		t.Fatalf("CA not applied: %+v", tr.TLSConfig)
+	}
+	if len(tr.TLSConfig.Certificates) != 0 {
+		t.Fatal("client certificate without one given")
+	}
+
+	if _, err := NewTransport(Opts{TLSCA: cert + ".missing"}); err == nil {
+		t.Error("want CA read error")
+	}
+}
+
 func TestNewTransportErrors(t *testing.T) {
 	dir := t.TempDir()
 	cert, key := selfSigned(t, dir)
