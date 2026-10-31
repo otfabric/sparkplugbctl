@@ -1,5 +1,17 @@
 # sparkplugbctl Releases
 
+## v0.3.1
+
+**Date:** 2026-10-31
+**Previous release:** v0.3.0
+
+### Fixed
+
+- `decode --json` and `listen --json` printed nothing and exited 0 when a metric was NaN, infinite, an array holding one of those, or a DateTime past year 9999. Those values are written as text.
+- Built on go-sparkplugb v0.2.1.
+
+---
+
 ## v0.3.0
 
 **Date:** 2026-10-30
