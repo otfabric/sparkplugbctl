@@ -176,7 +176,7 @@ func metricView(m *pb.Payload_Metric) MetricView {
 
 	val, err := payload.GetValue(m)
 	if err == nil {
-		mv.Value = val
+		mv.Value = jsonSafe(val)
 	}
 
 	q, ok := payload.GetQuality(m)
@@ -184,6 +184,17 @@ func metricView(m *pb.Payload_Metric) MetricView {
 		mv.Quality = qualityName(q)
 	}
 	return mv
+}
+
+// jsonSafe returns v, or v as text when JSON has no form for it: NaN and the
+// infinities, alone or in an array, and a DateTime beyond year 9999. Left in,
+// they make encoding/json refuse the whole document, and one metric reading
+// NaN (a sensor fault, say) would empty the output.
+func jsonSafe(v any) any {
+	if _, err := json.Marshal(v); err != nil {
+		return fmt.Sprint(v)
+	}
+	return v
 }
 
 func qualityName(q int32) string {

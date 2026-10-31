@@ -5,8 +5,10 @@ package output
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/otfabric/go-sparkplugb/payload"
 	pb "github.com/otfabric/go-sparkplugb/proto"
@@ -148,5 +150,62 @@ func TestPrintPayload(t *testing.T) {
 	(&Printer{W: &buf, JSON: true}).PrintPayload(&pb.Payload{})
 	if strings.Contains(buf.String(), "timestamp") {
 		t.Errorf("empty timestamp not omitted: %s", buf.String())
+	}
+}
+
+// A metric reading NaN or infinity used to make the JSON encoder refuse the
+// whole document, and --json printed nothing at all.
+func TestPrintJSONNonFinite(t *testing.T) {
+	var metrics []*pb.Payload_Metric
+	for name, v := range map[string]float64{"nan": math.NaN(), "up": math.Inf(1), "down": math.Inf(-1)} {
+		m, err := payload.NewMetric(name, pb.DataType_Double, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		metrics = append(metrics, m)
+	}
+	f, err := payload.NewMetric("f", pb.DataType_Float, float32(math.NaN()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := payload.NewMetric("ok", pb.DataType_Double, 1.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	far, err := payload.NewMetric("far", pb.DataType_DateTime, time.UnixMilli(1<<62))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pl := payload.NewPayload(1, append(metrics, f, ok, far)...)
+
+	want := map[string]any{"nan": "NaN", "up": "+Inf", "down": "-Inf", "f": "NaN", "ok": 1.5}
+	var buf bytes.Buffer
+	tp := topic.Topic{GroupID: "g", Type: topic.NDATA, EdgeNodeID: "n"}
+	for name, print := range map[string]func(*Printer){
+		"payload": func(p *Printer) { p.PrintPayload(pl) },
+		"message": func(p *Printer) { p.PrintMessage(tp, pl) },
+	} {
+		buf.Reset()
+		print(&Printer{W: &buf, JSON: true})
+		var doc struct {
+			Metrics []MetricView `json:"metrics"`
+		}
+		if err := json.Unmarshal(buf.Bytes(), &doc); err != nil {
+			t.Fatalf("%s: %v: %q", name, err, buf.String())
+		}
+		if len(doc.Metrics) != len(want)+1 {
+			t.Fatalf("%s: metrics = %+v", name, doc.Metrics)
+		}
+		for _, m := range doc.Metrics {
+			if m.Name == "far" {
+				if _, ok := m.Value.(string); !ok {
+					t.Errorf("%s: far = %v", name, m.Value)
+				}
+				continue
+			}
+			if m.Value != want[m.Name] {
+				t.Errorf("%s: %s = %v, want %v", name, m.Name, m.Value, want[m.Name])
+			}
+		}
 	}
 }

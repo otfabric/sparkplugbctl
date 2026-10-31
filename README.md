@@ -432,7 +432,7 @@ precedence when both are set.
 | `SPARKPLUGBCTL_JSON` | `--json` | `false` |
 | `SPARKPLUGBCTL_FORMAT` | `json` sets `--json`; `SPARKPLUGBCTL_OUTPUT_FORMAT` is accepted too | |
 
-Exit codes are listed in [docs/exitcodes.md](docs/exitcodes.md).
+Exit codes are listed in [docs/exitcodes.md](docs/exitcodes.md), and the `--json` output is described in [docs/json-output.md](docs/json-output.md).
 
 ---
 

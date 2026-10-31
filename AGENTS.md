@@ -13,6 +13,7 @@ This repository follows **otfabric/engineering policy 1.1**, profile **cli** (`.
 | Question | Source |
 |---|---|
 | Exit codes (script-facing API) | docs/exitcodes.md |
+| `--json` output (script-facing API) | docs/json-output.md |
 | Commands, flags, environment | README.md |
 | Security guidance | SECURITY.md |
 | Sparkplug behaviour | go-sparkplugb |
