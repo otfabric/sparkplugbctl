@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/mochi-mqtt/server/v2 v2.7.9
-	github.com/otfabric/go-sparkplugb v0.2.1
+	github.com/otfabric/go-sparkplugb v0.2.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	google.golang.org/protobuf v1.36.12

@@ -37,6 +37,18 @@ func (b *syncBuffer) String() string {
 	return b.buf.String()
 }
 
+// closeBroker stops srv. mochi 2.7.9 can deadlock in Close when a client leaves
+// at that moment (GetByListener takes the read lock twice while Delete waits
+// for the write lock), and it is the end of the test either way.
+func closeBroker(srv *mochi.Server) {
+	done := make(chan struct{})
+	go func() { defer close(done); _ = srv.Close() }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+	}
+}
+
 func startBroker(t *testing.T) string {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -56,7 +68,7 @@ func startBroker(t *testing.T) string {
 	if err := srv.Serve(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = srv.Close() })
+	t.Cleanup(func() { closeBroker(srv) })
 	return "tcp://" + addr
 }
 

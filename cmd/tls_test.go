@@ -83,7 +83,7 @@ func startTLSBroker(t *testing.T) (string, string) {
 	if err := srv.Serve(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = srv.Close() })
+	t.Cleanup(func() { closeBroker(srv) })
 	return "tls://" + addr, caPath
 }
 
