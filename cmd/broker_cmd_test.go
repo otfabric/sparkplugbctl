@@ -407,3 +407,32 @@ func TestListenSubscribeFails(t *testing.T) {
 		t.Errorf("exit %d, want %d (%v)", got, ExitTransport, err)
 	}
 }
+
+// A broker that drops the connection after the subscription ends listen with
+// a transport failure: nothing more can arrive, so waiting would hide it.
+func TestListenConnectionLost(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go func() {
+		c, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		buf := make([]byte, 1024)
+		_, _ = c.Read(buf)                             // CONNECT
+		_, _ = c.Write([]byte{0x20, 0x02, 0x00, 0x00}) // CONNACK, accepted
+		n, err := c.Read(buf)                          // SUBSCRIBE
+		if err != nil || n < 4 {
+			return
+		}
+		_, _ = c.Write([]byte{0x90, 0x03, buf[2], buf[3], 0x00}) // SUBACK
+	}()
+	_, _, err = run(t, nil, "listen", "--broker", "tcp://"+ln.Addr().String(), "--client-id", "lost")
+	if got := ExitCode(err); got != ExitTransport {
+		t.Errorf("exit %d, want %d (%v)", got, ExitTransport, err)
+	}
+}

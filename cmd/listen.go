@@ -52,12 +52,19 @@ func runListen(cmd *cobra.Command, args []string) error {
 		cid = "sparkplugbctl-listen"
 	}
 
+	lost := make(chan error, 1)
 	err = transport.Connect(ctx, mqtt.ConnectOpts{
 		BrokerURL:    brokerURL,
 		ClientID:     cid,
 		CleanSession: true,
 		Username:     username,
 		Password:     password,
+		OnConnectionLost: func(err error) {
+			select {
+			case lost <- err:
+			default:
+			}
+		},
 	})
 	if err != nil {
 		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
@@ -102,7 +109,11 @@ func runListen(cmd *cobra.Command, args []string) error {
 	}
 
 	_, _ = fmt.Fprintf(stderr, "Listening on %s (broker: %s)\n", subTopic, brokerURL)
-	<-ctx.Done()
+	select {
+	case err := <-lost:
+		return withExit(ExitTransport, fmt.Errorf("listen: %w", err))
+	case <-ctx.Done():
+	}
 	_, _ = fmt.Fprintln(stderr, "\nShutting down...")
 	return nil
 }
