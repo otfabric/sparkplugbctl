@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help build install fmt fmt-check lint lint-ci vet vuln test stress coverage cover coverage-gate check clean e2e build-all
+.PHONY: help build install fmt fmt-check lint lint-ci vet vuln test stress coverage cover coverage coverage-pkg-check fuzz-gate check clean e2e build-all
 
 help: ## This help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -19,6 +19,9 @@ LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.dat
 TEST_PKGS := $(shell go list ./...)
 COVER_PKGS := $(shell go list ./... | paste -sd, -)
 COVER_MIN ?= 90
+# Per-package floor (TEST-012), over the same coverage.out.
+COVER_PKG_MIN := 95
+FUZZTIME ?= 30s
 
 GO_FILES = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 
@@ -93,11 +96,25 @@ coverage-gate: coverage ## Fail if coverage is below COVER_MIN percent
 		echo "Coverage $$total% is below the gate of $(COVER_MIN)%"; exit 1; \
 	fi
 
+coverage-pkg-check: coverage ## Fail when a package of COVER_PKGS is below COVER_PKG_MIN (reads coverage.out)
+	@awk -v m="$(COVER_PKG_MIN)" -v pkgs="$(COVER_PKGS)" 'BEGIN { split(pkgs, l, ","); for (i in l) want[l[i]] = 1 } \
+	NR > 1 { n[$$1] = $$2; if ($$3 > 0) h[$$1] = 1 } \
+	END { for (k in n) { p = k; sub(/\/[^\/]*$$/, "", p); if (p in want) { s[p] += n[k]; if (k in h) c[p] += n[k] } } \
+	for (p in s) { v = 100 * c[p] / s[p]; if (v < m) { printf "%s: %.1f%% < %s%%\n", p, v, m; bad = 1 } } exit bad }' coverage.out
+
+fuzz: ## Run every fuzz target for FUZZTIME (targets discovered, never listed)
+	@for pkg in $$(go list ./...); do \
+		for t in $$(go test -list '^Fuzz' $$pkg | grep '^Fuzz'); do \
+			echo "fuzz $$pkg $$t"; \
+			go test -run '^$$' -fuzz "^$$t$$" -fuzztime $(FUZZTIME) $$pkg || exit 1; \
+		done; \
+	done
+
 cover: coverage ## Open coverage report in browser
 	@echo "Opening coverage report"
 	@go tool cover -html=coverage.out
 
-check: fmt fmt-check lint lint-ci vet vuln test coverage-gate ## Run format + lint + vet + vuln + test + coverage gate
+check: fmt fmt-check lint lint-ci vet vuln test coverage-gate coverage-pkg-check ## Run format + lint + vet + vuln + test + coverage gate
 
 clean: ## Remove generated binaries and coverage artifacts
 	@echo "Cleaning up"

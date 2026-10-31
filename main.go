@@ -16,9 +16,10 @@ var (
 	date    = "unknown"
 )
 
+// exit ends the process; a test replaces it.
+var exit = os.Exit
+
 func main() {
 	cmd.Version, cmd.Commit, cmd.BuildDate = version, commit, date
-	if err := cmd.Execute(); err != nil {
-		os.Exit(cmd.ExitCode(err))
-	}
+	exit(cmd.ExitCode(cmd.Execute()))
 }
