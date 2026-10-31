@@ -54,17 +54,12 @@ func runListen(cmd *cobra.Command, args []string) error {
 
 	lost := make(chan error, 1)
 	err = transport.Connect(ctx, mqtt.ConnectOpts{
-		BrokerURL:    brokerURL,
-		ClientID:     cid,
-		CleanSession: true,
-		Username:     username,
-		Password:     password,
-		OnConnectionLost: func(err error) {
-			select {
-			case lost <- err:
-			default:
-			}
-		},
+		BrokerURL:        brokerURL,
+		ClientID:         cid,
+		CleanSession:     true,
+		Username:         username,
+		Password:         password,
+		OnConnectionLost: func(err error) { lost <- err }, // called once
 	})
 	if err != nil {
 		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
