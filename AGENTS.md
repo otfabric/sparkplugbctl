@@ -6,7 +6,7 @@ Command-line tool for Sparkplug B 3.0.0 over MQTT built on [go-sparkplugb](https
 
 ## Organisation standards
 
-This repository follows **otfabric/engineering policy 1.1**, profile **cli** (`.otfabric/policy.yaml`, mode `enforce`). Where this file and the organisation standards disagree, this file wins here — say so in your report.
+This repository follows **otfabric/engineering policy 1.2**, profile **cli** (`.otfabric/policy.yaml`, mode `enforce`). Where this file and the organisation standards disagree, this file wins here — say so in your report.
 
 ## Where the truth lives
 
