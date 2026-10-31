@@ -1,7 +1,15 @@
-bin/
+/bin/
 .DS_Store
 *.swp
 *.swo
 *~
 .idea/
 .vscode/
+
+# Build artefacts live in /bin/ and /release/ (otfabric/engineering REPO-005)
+/release/
+*.test
+coverage.out
+
+# Output of a bare `go build`, anchored so it can never hide a source folder
+/sparkplugbctl
