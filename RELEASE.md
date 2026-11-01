@@ -1,5 +1,16 @@
 # sparkplugbctl Releases
 
+## v0.3.3
+
+**Date:** 2026-11-01
+**Previous release:** v0.3.2
+
+### Changed
+
+- Built on go-sparkplugb v0.3.0, which refuses every integer out of its datatype's range: a metric whose value does not fit its datatype, such as a UInt8 of 256, now shows no value in the output, where it used to show the truncated value.
+
+---
+
 ## v0.3.2
 
 **Date:** 2026-11-01
