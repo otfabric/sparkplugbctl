@@ -1,5 +1,17 @@
 # sparkplugbctl Releases
 
+## v0.3.6
+
+**Date:** 2026-11-01
+**Previous release:** v0.3.5
+
+### Fixed
+
+- Through go-sparkplugb: an update in the millisecond of a rebirth is kept, and an edge node no longer publishes an NBIRTH after its NDEATH. `sparkplugbctl` code is unchanged.
+- Built on go-sparkplugb v0.3.3.
+
+---
+
 ## v0.3.5
 
 **Date:** 2026-11-01
