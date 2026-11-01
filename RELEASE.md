@@ -1,5 +1,17 @@
 # sparkplugbctl Releases
 
+## v0.3.2
+
+**Date:** 2026-11-01
+**Previous release:** v0.3.1
+
+### Changed
+
+- Built on go-sparkplugb v0.2.3, which refuses an Int8 or Int16 that is neither sign-extended nor width-sized: such a metric now shows no value in the output.
+- Built on go-sparkplugb v0.2.3.
+
+---
+
 ## v0.3.1
 
 **Date:** 2026-10-31
