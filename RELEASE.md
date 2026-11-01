@@ -1,5 +1,17 @@
 # sparkplugbctl Releases
 
+## v0.3.5
+
+**Date:** 2026-11-01
+**Previous release:** v0.3.4
+
+### Fixed
+
+- An NBIRTH delivered just after the NDEATH of its `bdSeq` no longer brings a dead edge node back online, through go-sparkplugb. `sparkplugbctl` code is unchanged.
+- Built on go-sparkplugb v0.3.2.
+
+---
+
 ## v0.3.4
 
 **Date:** 2026-11-01
