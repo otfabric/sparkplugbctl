@@ -1,5 +1,17 @@
 # sparkplugbctl Releases
 
+## v0.3.4
+
+**Date:** 2026-11-01
+**Previous release:** v0.3.3
+
+### Fixed
+
+- Built on go-sparkplugb v0.3.1, which keeps the sessions of an edge node apart when a broker reorders messages across topics. `sparkplugbctl` code is unchanged.
+- Built on go-sparkplugb v0.3.1.
+
+---
+
 ## v0.3.3
 
 **Date:** 2026-11-01
