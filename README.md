@@ -106,7 +106,7 @@ sparkplugbctl version
 go install github.com/otfabric/sparkplugbctl@latest
 ```
 
-Requires Go 1.27 or later.
+Requires Go 1.27.3 or later.
 
 ### Build from source
 
