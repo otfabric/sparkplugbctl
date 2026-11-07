@@ -1,0 +1,10 @@
+{
+  "clis": [
+    {
+      "name": "sparkplugbctl",
+      "manifest": "./cmd",
+      "exit_codes": "cmd",
+      "json_types": "internal/output"
+    }
+  ]
+}
