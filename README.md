@@ -326,19 +326,19 @@ sparkplugbctl version --json
 One line on stdout. A release build:
 
 ```
-sparkplugbctl 0.4.0 (tag v0.4.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-11-05T15:41:49Z, go1.27.3, darwin/arm64)
+sparkplugbctl 0.4.0 (tag v0.4.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-11-05T15:41:49Z, go-sparkplugb 0.3.3, go1.27.3, darwin/arm64)
 ```
 
-A development build (`go build`, `go run`; `go install …@vX.Y.Z` reports that version):
+A development build (`go build`, `go run`, or `make build` off a tag; `go install …@vX.Y.Z` reports that version):
 
 ```
-sparkplugbctl dev (commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e-dirty, built unknown, go1.27.3, darwin/arm64)
+sparkplugbctl dev (commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e-dirty, built unknown, go-sparkplugb 0.3.3, go1.27.3, darwin/arm64)
 ```
 
 With `--json` (or `SPARKPLUGBCTL_FORMAT=json`) it prints one JSON object; the fields are in [docs/json-output.md](docs/json-output.md#version).
 
 ```json
-{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-11-05T15:41:49Z","go":"go1.27.3","platform":"darwin/arm64"}
+{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-11-05T15:41:49Z","libraries":[{"name":"go-sparkplugb","version":"0.3.3"}],"go":"go1.27.3","platform":"darwin/arm64"}
 ```
 
 ---

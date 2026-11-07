@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -28,9 +29,10 @@ func TestVersion(t *testing.T) {
 	defer func(v, tg, c, d string) { Version, Tag, Commit, BuildDate = v, tg, c, d }(Version, Tag, Commit, BuildDate)
 	Version, Tag, Commit, BuildDate = "0.4.0", "v0.4.0", "1802d0f9afe8642d1e278120b76fcdfac967cb9e", "2026-11-05T15:41:49Z"
 	platform := runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH
-	wantText := "sparkplugbctl 0.4.0 (tag v0.4.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-11-05T15:41:49Z, " + platform + ")\n"
+	lib := sparkplugbVersion(t)
+	wantText := "sparkplugbctl 0.4.0 (tag v0.4.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-11-05T15:41:49Z, go-sparkplugb " + lib + ", " + platform + ")\n"
 	wantJSON := `{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e",` +
-		`"built":"2026-11-05T15:41:49Z","go":"` + runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
+		`"built":"2026-11-05T15:41:49Z","libraries":[{"name":"go-sparkplugb","version":"` + lib + `"}],"go":"` + runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
 
 	t.Setenv("SPARKPLUGBCTL_FORMAT", "")
 	t.Setenv("SPARKPLUGBCTL_OUTPUT_FORMAT", "")
@@ -56,6 +58,23 @@ func TestVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+// sparkplugbVersion is the go-sparkplugb version of the test binary, without
+// the leading v.
+func sparkplugbVersion(t *testing.T) string {
+	t.Helper()
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		t.Fatal("no build information")
+	}
+	for _, d := range bi.Deps {
+		if d.Path == "github.com/otfabric/go-sparkplugb" {
+			return strings.TrimPrefix(d.Version, "v")
+		}
+	}
+	t.Fatal("go-sparkplugb is not a dependency")
+	return ""
 }
 
 // TestEnvironment checks that a global flag comes from its SPARKPLUGBCTL_

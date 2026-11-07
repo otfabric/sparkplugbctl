@@ -97,9 +97,10 @@ One compact object on one line, the keys always present and in this order:
 | `tag` | string | The git tag of a release build (`v0.4.0`); `""` when there is none |
 | `commit` | string | The full commit SHA, with `-dirty` for a build from modified sources; `unknown` when not known |
 | `built` | string | The RFC 3339 UTC build time; `unknown` when not known |
+| `libraries` | array | The OT Fabric libraries (`github.com/otfabric/go-*`) the binary is built on, sorted by name, each `{"name":"go-sparkplugb","version":"0.3.3"}` with the version without its `v`; `[]` when none |
 | `go` | string | The Go version the binary was built with |
 | `platform` | string | `<goos>/<goarch>` |
 
 ```json
-{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-11-05T15:41:49Z","go":"go1.27.3","platform":"darwin/arm64"}
+{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-11-05T15:41:49Z","libraries":[{"name":"go-sparkplugb","version":"0.3.3"}],"go":"go1.27.3","platform":"darwin/arm64"}
 ```
