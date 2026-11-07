@@ -5,10 +5,9 @@ assume a local MQTT broker on `tcp://localhost:1883` (override with `--broker`).
 
 ## Prerequisites
 
-```bash
-# Install sparkplugbctl
-go install github.com/otfabric/sparkplugbctl@latest
+Install sparkplugbctl: see [Install](../README.md#install).
 
+```bash
 # Start a local broker (e.g. Mosquitto)
 docker run -d --name mosquitto -p 1883:1883 eclipse-mosquitto:2.0.21 \
   mosquitto -c /dev/null -p 1883

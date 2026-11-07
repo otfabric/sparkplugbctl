@@ -14,6 +14,22 @@ MQTT infrastructure. Built in Go on
 
 ---
 
+## Install
+
+```bash
+curl -fsSL https://get.otfabric.io/sparkplugbctl | sh
+```
+
+```powershell
+irm https://get.otfabric.io/sparkplugbctl.ps1 | iex
+```
+
+Linux (amd64, arm64, armv7), macOS (Intel, Apple silicon) and Windows (amd64, arm64). The installer verifies the release's SHA-256 checksum, installs per user without `sudo` (`~/.local/bin`, Windows `%LOCALAPPDATA%\OTFabric\bin`), and upgrades in place when run again. Pin a version with `OTF_VERSION=x.y.z`; for CI, containers and device images use `OTF_UNMANAGED_INSTALL=<dir>`; all options: [otfabric/install](https://github.com/otfabric/install#options). For offline machines, the archives and checksums are on [Releases](https://github.com/otfabric/sparkplugbctl/releases).
+
+From source (Go 1.27.3+): `go install github.com/otfabric/sparkplugbctl@latest`
+
+---
+
 ## Quick start
 
 ```bash
@@ -50,76 +66,6 @@ sparkplugbctl
 ├── completion     Generate shell completion (bash|zsh|fish|powershell)
 └── version        Print version and build info
 ```
-
----
-
-## Installation
-
-### Download a prebuilt binary
-
-| Platform       | Architecture | Archive                                          |
-|----------------|:------------:|--------------------------------------------------|
-| Linux          | amd64        | `sparkplugbctl_<version>_linux_amd64.tar.gz`     |
-| Linux          | arm64        | `sparkplugbctl_<version>_linux_arm64.tar.gz`     |
-| macOS          | arm64 (M1+)  | `sparkplugbctl_<version>_darwin_arm64.tar.gz`    |
-| macOS          | amd64        | `sparkplugbctl_<version>_darwin_amd64.tar.gz`    |
-| Windows        | amd64        | `sparkplugbctl_<version>_windows_amd64.zip`      |
-| Windows        | arm64        | `sparkplugbctl_<version>_windows_arm64.zip`      |
-
-Download the latest archive from
-[GitHub Releases](https://github.com/otfabric/sparkplugbctl/releases), verify
-the SHA-256 checksum, and place the binary on your `PATH`.
-
-**Linux (amd64)**
-
-```bash
-VERSION=0.1.0
-curl -fsSL "https://github.com/otfabric/sparkplugbctl/releases/download/v${VERSION}/sparkplugbctl_${VERSION}_linux_amd64.tar.gz" \
-  | tar xz -C /usr/local/bin sparkplugbctl
-sparkplugbctl version
-```
-
-**macOS (Apple Silicon)**
-
-```bash
-VERSION=0.1.0
-curl -fsSL "https://github.com/otfabric/sparkplugbctl/releases/download/v${VERSION}/sparkplugbctl_${VERSION}_darwin_arm64.tar.gz" \
-  | tar xz -C /usr/local/bin sparkplugbctl
-sparkplugbctl version
-```
-
-**Windows (PowerShell)**
-
-```powershell
-$VERSION = "0.1.0"
-Invoke-WebRequest `
-  "https://github.com/otfabric/sparkplugbctl/releases/download/v$VERSION/sparkplugbctl_${VERSION}_windows_amd64.zip" `
-  -OutFile sparkplugbctl.zip
-Expand-Archive sparkplugbctl.zip -DestinationPath C:\Tools
-$env:PATH += ";C:\Tools"
-sparkplugbctl version
-```
-
-### Install with Go
-
-```bash
-go install github.com/otfabric/sparkplugbctl@latest
-```
-
-Requires Go 1.27.3 or later.
-
-### Build from source
-
-```bash
-git clone https://github.com/otfabric/sparkplugbctl.git
-cd sparkplugbctl
-make build
-# binary at bin/sparkplugbctl
-```
-
-### Update
-
-Replace the binary with a newer release archive, or re-run `go install`.
 
 ---
 
