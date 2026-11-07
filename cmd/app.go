@@ -19,8 +19,9 @@ import (
 var appGroup string
 
 var appCmd = &cobra.Command{
-	Use:   "app",
-	Short: "Run a Sparkplug B application (subscriber, no STATE)",
+	ValidArgsFunction: cobra.NoFileCompletions,
+	Use:               "app",
+	Short:             "Run a Sparkplug B application (subscriber, no STATE)",
 	Long: `App runs a Sparkplug B application that subscribes to spBv1.0/#,
 tracks edge nodes and devices, and displays events as they arrive.
 
@@ -32,6 +33,7 @@ resolves aliases, and can send NCMD/DCMD commands.`,
 
 func init() {
 	appCmd.Flags().StringVar(&appGroup, "group", "", "filter events by group ID (optional)")
+	completeFlags(appCmd, cobra.NoFileCompletions, "group")
 	rootCmd.AddCommand(appCmd)
 }
 

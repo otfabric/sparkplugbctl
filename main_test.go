@@ -36,8 +36,10 @@ func TestMainPassesBuildMetaAndExitCode(t *testing.T) {
 	old := version
 	defer func() { version = old }()
 	version = "v9.8.7-test"
+	defer func(o string) { tag = o }(tag)
+	tag = "v9.8.7-test"
 	code, out := runMain(t, "version")
-	if code != 0 || !strings.Contains(out, "v9.8.7-test") {
+	if code != 0 || !strings.HasPrefix(out, "sparkplugbctl 9.8.7-test (tag v9.8.7-test, commit ") {
 		t.Fatalf("version: exit %d, output %q", code, out)
 	}
 	if code, _ := runMain(t, "no-such-command"); code == 0 {

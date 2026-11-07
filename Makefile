@@ -11,10 +11,13 @@ GO_MOD_VERSION := $(shell sed -nE 's/^go ([0-9]+\.[0-9]+).*/\1/p' go.mod | head 
 GOFMT_CI = $(shell GOTOOLCHAIN=go$(GO_MOD_VERSION).0 go env GOROOT)/bin/gofmt
 
 BIN_DIR := bin
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+# Build metadata for the version command (internal/buildinfo). VERSION has no
+# leading v; TAG is set only on a tagged commit; COMMIT is the full SHA.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
+TAG ?= $(shell git describe --tags --exact-match 2>/dev/null)
+COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(BUILD_DATE)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X main.tag=$(TAG) -X main.commit=$(COMMIT) -X main.date=$(BUILD_DATE)
 
 TEST_PKGS := $(shell go list ./...)
 COVER_PKGS := $(shell go list ./... | paste -sd, -)

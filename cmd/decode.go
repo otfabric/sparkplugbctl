@@ -15,8 +15,9 @@ import (
 var decodeFile string
 
 var decodeCmd = &cobra.Command{
-	Use:   "decode",
-	Short: "Decode a Sparkplug B Protobuf payload",
+	ValidArgsFunction: cobra.NoFileCompletions,
+	Use:               "decode",
+	Short:             "Decode a Sparkplug B Protobuf payload",
 	Long: `Decode reads a binary Sparkplug B Protobuf payload from stdin or
 a file and pretty-prints or JSON-encodes it.`,
 	RunE: runDecode,
@@ -24,6 +25,7 @@ a file and pretty-prints or JSON-encodes it.`,
 
 func init() {
 	decodeCmd.Flags().StringVar(&decodeFile, "file", "", "read payload from file (default: stdin)")
+	completeFlags(decodeCmd, anyFile, "file")
 	rootCmd.AddCommand(decodeCmd)
 }
 

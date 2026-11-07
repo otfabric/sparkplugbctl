@@ -4,48 +4,33 @@ package cmd
 
 import (
 	"fmt"
-	"runtime"
-	"runtime/debug"
 
+	"github.com/otfabric/sparkplugbctl/internal/buildinfo"
 	"github.com/spf13/cobra"
 )
 
+// Build metadata, set by main from the values injected at link time. Empty
+// means not injected: the version command then falls back to the Go build
+// information, then to "dev" or "unknown".
 var (
-	Version   = "dev"
-	Commit    = "unknown"
-	BuildDate = "unknown"
+	Version   string
+	Tag       string
+	Commit    string
+	BuildDate string
 )
 
 var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print version information",
+	Use:               "version",
+	Short:             "Print version information",
+	ValidArgsFunction: cobra.NoFileCompletions,
 	Run: func(cmd *cobra.Command, args []string) {
-		w := cmd.OutOrStdout()
-		_, _ = fmt.Fprintf(w, "sparkplugbctl %s\n", Version)
-		_, _ = fmt.Fprintf(w, "  commit:  %s\n", Commit)
-		_, _ = fmt.Fprintf(w, "  built:   %s\n", BuildDate)
-		_, _ = fmt.Fprintf(w, "  library: go-sparkplugb %s\n", libraryVersion())
-		_, _ = fmt.Fprintf(w, "  go:      %s\n", runtime.Version())
-		_, _ = fmt.Fprintf(w, "  os/arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	},
-}
-
-// libraryVersion is the go-sparkplugb module version this binary was built
-// with, from its build information.
-func libraryVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "unknown"
-	}
-	for _, dep := range info.Deps {
-		if dep.Path == "github.com/otfabric/go-sparkplugb" {
-			if dep.Replace != nil {
-				return dep.Replace.Version + " (replaced by " + dep.Replace.Path + ")"
-			}
-			return dep.Version
+		info := buildinfo.Resolve(cmd.Root().Name(), Version, Tag, Commit, BuildDate)
+		line := info.String()
+		if jsonOut {
+			line = info.JSON()
 		}
-	}
-	return "unknown"
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
+	},
 }
 
 func init() {
