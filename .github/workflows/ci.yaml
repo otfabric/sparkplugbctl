@@ -24,7 +24,7 @@ jobs:
       codecov-name: sparkplugbctl
       go-versions: '["1.27"]'
       golangci-lint-version: v2.15.0
-      policy-version: v1.4.1
+      policy-version: v1.4.2
     secrets: inherit
 
   # The per-package floor (COVER_PKG_MIN in the Makefile) on top of the
