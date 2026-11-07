@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help build install fmt fmt-check lint lint-ci vet vuln test stress coverage cover coverage coverage-pkg-check fuzz-gate check clean e2e build-all
+.PHONY: help build install fmt fmt-check lint lint-ci vet vuln test stress coverage cover coverage coverage-pkg-check fuzz-gate check clean e2e build-all docs-check
 
 help: ## This help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -22,6 +22,8 @@ COVER_MIN ?= 90
 # Per-package floor (TEST-012), over the same coverage.out.
 COVER_PKG_MIN := 95
 FUZZTIME ?= 30s
+# docsync release of docs-check (DOC-008).
+DOCSYNC_VERSION := v0.2.0
 
 GO_FILES = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 
@@ -114,7 +116,11 @@ cover: coverage ## Open coverage report in browser
 	@echo "Opening coverage report"
 	@go tool cover -html=coverage.out
 
-check: fmt fmt-check lint lint-ci vet vuln test coverage-gate coverage-pkg-check ## Run format + lint + vet + vuln + test + coverage gate
+check: fmt fmt-check lint lint-ci vet vuln test coverage-gate coverage-pkg-check docs-check ## Run format + lint + vet + vuln + test + coverage gate + docs check
+
+# The documents against the code (DOC-008): docsync, as docs-check.yml runs it.
+docs-check: ## Check that the documents agree with the code (docsync)
+	@go run github.com/otfabric/docsync@$(DOCSYNC_VERSION) check .
 
 clean: ## Remove generated binaries and coverage artifacts
 	@echo "Cleaning up"
