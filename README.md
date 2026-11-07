@@ -28,6 +28,26 @@ Linux (amd64, arm64, armv7), macOS (Intel, Apple silicon) and Windows (amd64, ar
 
 From source (Go 1.27.3+): `go install github.com/otfabric/sparkplugbctl@latest`
 
+### Shell completion
+
+```bash
+# bash (needs the bash-completion package)
+mkdir -p ~/.local/share/bash-completion/completions
+sparkplugbctl completion bash > ~/.local/share/bash-completion/completions/sparkplugbctl
+
+# zsh: a directory on your fpath, then restart the shell
+mkdir -p ~/.zsh/completions && sparkplugbctl completion zsh > ~/.zsh/completions/_sparkplugbctl
+# and once in ~/.zshrc:  fpath=(~/.zsh/completions $fpath); autoload -U compinit && compinit
+
+# fish
+mkdir -p ~/.config/fish/completions && sparkplugbctl completion fish > ~/.config/fish/completions/sparkplugbctl.fish
+```
+
+```powershell
+# PowerShell: add this line to your profile ($PROFILE)
+sparkplugbctl completion powershell | Out-String | Invoke-Expression
+```
+
 ---
 
 ## Quick start
@@ -292,21 +312,7 @@ sparkplugbctl encode --metric "temperature:Double=22.5" | base64
 
 ### completion
 
-Generate shell completion scripts.
-
-```bash
-# Bash
-sparkplugbctl completion bash > /etc/bash_completion.d/sparkplugbctl
-
-# Zsh
-sparkplugbctl completion zsh > "${fpath[1]}/_sparkplugbctl"
-
-# Fish
-sparkplugbctl completion fish > ~/.config/fish/completions/sparkplugbctl.fish
-
-# PowerShell
-sparkplugbctl completion powershell > sparkplugbctl.ps1
-```
+Generate shell completion scripts for bash, zsh, fish and PowerShell; how to install them: [Shell completion](#shell-completion).
 
 ### version
 
