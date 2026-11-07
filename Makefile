@@ -23,7 +23,7 @@ COVER_MIN ?= 90
 COVER_PKG_MIN := 95
 FUZZTIME ?= 30s
 # docsync release of docs-check (DOC-008).
-DOCSYNC_VERSION := v0.2.0
+DOCSYNC_VERSION := v0.3.0
 
 GO_FILES = $(shell git ls-files --cached --others --exclude-standard -- '*.go')
 
