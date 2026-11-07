@@ -46,8 +46,12 @@ func TestVersionPrintsTheBuiltVersion(t *testing.T) {
 	if want == "" {
 		t.Fatal("SPARKPLUGBCTL_E2E_VERSION is not set; run make e2e")
 	}
-	if !strings.Contains(output, "sparkplugbctl") || !strings.Contains(output, want) {
-		t.Fatalf("output does not name sparkplugbctl %s:\n%s", want, output)
+	if !strings.HasPrefix(output, "sparkplugbctl "+want+" (") || strings.Count(output, "\n") != 1 {
+		t.Fatalf("output is not one line naming sparkplugbctl %s:\n%s", want, output)
+	}
+	output, code = run(t, "version", "--json")
+	if code != 0 || !strings.HasPrefix(output, `{"name":"sparkplugbctl","version":"`+want+`","tag":`) {
+		t.Fatalf("version --json: exit %d\n%s", code, output)
 	}
 }
 

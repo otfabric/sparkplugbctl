@@ -11,10 +11,14 @@ GO_MOD_VERSION := $(shell sed -nE 's/^go ([0-9]+\.[0-9]+).*/\1/p' go.mod | head 
 GOFMT_CI = $(shell GOTOOLCHAIN=go$(GO_MOD_VERSION).0 go env GOROOT)/bin/gofmt
 
 BIN_DIR := bin
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+# Build metadata for the version command (internal/buildinfo). TAG and VERSION
+# (the tag without its v) are set only when HEAD is exactly on a tag; otherwise
+# they stay empty and the binary reports dev. COMMIT is the full SHA.
+TAG ?= $(shell git describe --tags --exact-match 2>/dev/null)
+VERSION ?= $(patsubst v%,%,$(TAG))
+COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(BUILD_DATE)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X main.tag=$(TAG) -X main.commit=$(COMMIT) -X main.date=$(BUILD_DATE)
 
 TEST_PKGS := $(shell go list ./...)
 COVER_PKGS := $(shell go list ./... | paste -sd, -)
@@ -41,7 +45,7 @@ build-all: ## Cross-compile the release platforms into ./bin
 e2e: ## Build the binary and run the e2e suite against it
 	@mkdir -p bin
 	@go build -ldflags "$(LDFLAGS)" -o bin/sparkplugbctl .
-	@SPARKPLUGBCTL_E2E_BIN=$(CURDIR)/bin/sparkplugbctl SPARKPLUGBCTL_E2E_VERSION=$(VERSION) go test -count=1 -tags=e2e ./e2e/...
+	@SPARKPLUGBCTL_E2E_BIN=$(CURDIR)/bin/sparkplugbctl SPARKPLUGBCTL_E2E_VERSION=$(or $(VERSION),dev) go test -count=1 -tags=e2e ./e2e/...
 
 install: ## Install sparkplugbctl into GOPATH/bin
 	@echo "Installing sparkplugbctl"

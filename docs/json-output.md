@@ -1,8 +1,8 @@
 # `--json` output
 
-`--json` (or `SPARKPLUGBCTL_FORMAT=json`) changes what `decode`, `listen` and `app` write to stdout. Every other command ignores it: `host` and `edge` always print text, `encode` writes Protobuf bytes, `publish` prints text. Errors are text on stderr, with the exit codes of [exitcodes.md](exitcodes.md); no error object is written to stdout.
+`--json` (or `SPARKPLUGBCTL_FORMAT=json`) changes what `decode`, `listen`, `app` and `version` write to stdout. Every other command ignores it: `host` and `edge` always print text, `encode` writes Protobuf bytes, `publish` prints text. Errors are text on stderr, with the exit codes of [exitcodes.md](exitcodes.md); no error object is written to stdout.
 
-Field names are a contract for scripts (`internal/output/output.go`, `appEvent` in `cmd/app.go`). A change to one is called out in the release notes.
+Field names are a contract for scripts (`internal/output/output.go`, `appEvent` in `cmd/app.go`, `Info` in `internal/buildinfo`). A change to one is called out in the release notes.
 
 ## General
 
@@ -85,3 +85,22 @@ One line per lifecycle or data event:
 | `node_id` | string | |
 | `device_id` | string | Omitted for node events |
 | `metrics` | number | How many metrics the message carried, not the metrics; omitted when 0 |
+
+## `version`
+
+One compact object on one line, the keys always present and in this order:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `name` | string | `sparkplugbctl` |
+| `version` | string | The version without a leading `v`; `dev` for a development build |
+| `tag` | string | The git tag of a release build (`v0.4.0`); `""` when there is none |
+| `commit` | string | The full commit SHA, with `-dirty` for a build from modified sources; `unknown` when not known |
+| `built` | string | The RFC 3339 UTC build time; `unknown` when not known |
+| `libraries` | array | The OT Fabric libraries (`github.com/otfabric/go-*`) the binary is built on, sorted by name, each `{"name":"go-sparkplugb","version":"0.3.3"}` with the version without its `v`; `[]` when none |
+| `go` | string | The Go version the binary was built with |
+| `platform` | string | `<goos>/<goarch>` |
+
+```json
+{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-11-05T15:41:49Z","libraries":[{"name":"go-sparkplugb","version":"0.3.3"}],"go":"go1.27.3","platform":"darwin/arm64"}
+```

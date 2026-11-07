@@ -23,8 +23,9 @@ var (
 )
 
 var listenCmd = &cobra.Command{
-	Use:   "listen",
-	Short: "Subscribe to Sparkplug B messages and print them",
+	ValidArgsFunction: cobra.NoFileCompletions,
+	Use:               "listen",
+	Short:             "Subscribe to Sparkplug B messages and print them",
 	Long: `Listen subscribes to spBv1.0/# and decodes incoming Sparkplug B
 messages in real time. Use --group, --node, and --device to filter.`,
 	RunE: runListen,
@@ -34,6 +35,7 @@ func init() {
 	listenCmd.Flags().StringVar(&filterGroup, "group", "", "filter by group ID")
 	listenCmd.Flags().StringVar(&filterNode, "node", "", "filter by edge node ID")
 	listenCmd.Flags().StringVar(&filterDevice, "device", "", "filter by device ID")
+	completeFlags(listenCmd, cobra.NoFileCompletions, "group", "node", "device")
 	rootCmd.AddCommand(listenCmd)
 }
 

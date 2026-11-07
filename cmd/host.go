@@ -18,8 +18,9 @@ import (
 var hostID string
 
 var hostCmd = &cobra.Command{
-	Use:   "host",
-	Short: "Simulate a Sparkplug B host application",
+	ValidArgsFunction: cobra.NoFileCompletions,
+	Use:               "host",
+	Short:             "Simulate a Sparkplug B host application",
 	Long: `Host simulates a Sparkplug B host application:
 Connect → STATE ONLINE → listen for edge activity → Ctrl+C → STATE OFFLINE → Disconnect`,
 	RunE: runHost,
@@ -27,6 +28,7 @@ Connect → STATE ONLINE → listen for edge activity → Ctrl+C → STATE OFFLI
 
 func init() {
 	hostCmd.Flags().StringVar(&hostID, "host-id", "", "host application ID (required)")
+	completeFlags(hostCmd, cobra.NoFileCompletions, "host-id")
 	_ = hostCmd.MarkFlagRequired("host-id")
 	rootCmd.AddCommand(hostCmd)
 }

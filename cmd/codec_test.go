@@ -7,6 +7,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -24,15 +26,55 @@ func TestRootCommandExists(t *testing.T) {
 }
 
 func TestVersion(t *testing.T) {
-	out, _, err := run(t, nil, "version")
-	if err != nil {
-		t.Fatal(err)
+	defer func(v, tg, c, d string) { Version, Tag, Commit, BuildDate = v, tg, c, d }(Version, Tag, Commit, BuildDate)
+	Version, Tag, Commit, BuildDate = "0.4.0", "v0.4.0", "1802d0f9afe8642d1e278120b76fcdfac967cb9e", "2026-11-05T15:41:49Z"
+	platform := runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH
+	lib := sparkplugbVersion(t)
+	wantText := "sparkplugbctl 0.4.0 (tag v0.4.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-11-05T15:41:49Z, go-sparkplugb " + lib + ", " + platform + ")\n"
+	wantJSON := `{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e",` +
+		`"built":"2026-11-05T15:41:49Z","libraries":[{"name":"go-sparkplugb","version":"` + lib + `"}],"go":"` + runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
+
+	t.Setenv("SPARKPLUGBCTL_FORMAT", "")
+	t.Setenv("SPARKPLUGBCTL_OUTPUT_FORMAT", "")
+	cases := []struct {
+		name, format string
+		args         []string
+		want         string
+	}{
+		{"text", "", []string{"version"}, wantText},
+		{"json flag", "", []string{"version", "--json"}, wantJSON},
+		{"format json", "json", []string{"version"}, wantJSON},
+		{"format text", "text", []string{"version"}, wantText},
 	}
-	for _, want := range []string{"sparkplugbctl " + Version, "commit:", "built:", "library: go-sparkplugb ", "go:", "os/arch:"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("version output missing %q:\n%s", want, out)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Setenv("SPARKPLUGBCTL_FORMAT", c.format)
+			out, _, err := run(t, nil, c.args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if out != c.want {
+				t.Errorf("got  %q\nwant %q", out, c.want)
+			}
+		})
+	}
+}
+
+// sparkplugbVersion is the go-sparkplugb version of the test binary, without
+// the leading v.
+func sparkplugbVersion(t *testing.T) string {
+	t.Helper()
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		t.Fatal("no build information")
+	}
+	for _, d := range bi.Deps {
+		if d.Path == "github.com/otfabric/go-sparkplugb" {
+			return strings.TrimPrefix(d.Version, "v")
 		}
 	}
+	t.Fatal("go-sparkplugb is not a dependency")
+	return ""
 }
 
 // TestEnvironment checks that a global flag comes from its SPARKPLUGBCTL_

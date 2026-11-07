@@ -1,5 +1,22 @@
 # sparkplugbctl Releases
 
+## v0.4.0
+
+**Date:** 2026-11-07
+**Previous release:** v0.3.6
+
+### Added
+
+- `version --json` (and `version` with `SPARKPLUGBCTL_FORMAT=json`) prints one JSON object: `name`, `version`, `tag`, `commit`, `built`, `libraries`, `go`, `platform`, in that order ([docs/json-output.md](docs/json-output.md#version)).
+- Shell completion for flag values: the type in `--metric name:type=value` (`publish`, `edge`, `encode`) completes the 15 metric types, `--tls-cert`/`--tls-ca` complete `.pem`/`.crt`/`.cer` files and `--tls-key` `.pem`/`.key` files; flags that take free values and commands without arguments no longer offer file names. `completion` covers bash, zsh, fish and PowerShell.
+
+### Changed
+
+- `version` prints one line, aligned with the other OT Fabric CLIs: `sparkplugbctl 0.4.0 (tag v0.4.0, commit <full SHA>, built <RFC 3339>, go-sparkplugb 0.3.3, go1.27.3, darwin/arm64)`. The version has no leading `v` and the tag part is left out when there is none. A `go install …@vX.Y.Z` build reports that version; a `go build` or a `make build` off a tag reports `dev` with the VCS commit (with `-dirty`).
+- The release workflow injects the git tag (`-X main.tag`); the Makefile injects the full commit SHA, and the version and tag only when HEAD is exactly on a tag.
+
+---
+
 ## v0.3.6
 
 **Date:** 2026-11-01

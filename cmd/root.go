@@ -72,6 +72,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&tlsKey, "tls-key", "", "TLS client key file")
 	rootCmd.PersistentFlags().StringVar(&tlsCA, "tls-ca", "", "TLS CA certificate file")
 	rootCmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "output as JSON")
+	completeFlags(rootCmd, cobra.NoFileCompletions, "broker", "client-id", "username", "password")
+	completeFlags(rootCmd, fileExt("pem", "crt", "cer"), "tls-cert", "tls-ca")
+	completeFlags(rootCmd, fileExt("pem", "key"), "tls-key")
 }
 
 func Execute() error {

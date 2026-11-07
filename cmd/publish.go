@@ -23,8 +23,9 @@ var (
 )
 
 var publishCmd = &cobra.Command{
-	Use:   "publish",
-	Short: "Publish a Sparkplug B payload",
+	ValidArgsFunction: cobra.NoFileCompletions,
+	Use:               "publish",
+	Short:             "Publish a Sparkplug B payload",
 	Long: `Publish creates a Sparkplug B payload from the given metrics and
 publishes it to the specified topic.
 
@@ -40,6 +41,8 @@ func init() {
 	publishCmd.Flags().StringVar(&pubTopic, "topic", "", "MQTT topic (required)")
 	publishCmd.Flags().StringSliceVar(&pubMetrics, "metric", nil, "metric in name:type=value format (repeatable)")
 	publishCmd.Flags().Uint64Var(&pubSeq, "seq", 0, "sequence number")
+	completeFlags(publishCmd, cobra.NoFileCompletions, "topic", "seq")
+	completeFlags(publishCmd, completeMetric, "metric")
 	_ = publishCmd.MarkFlagRequired("topic")
 	rootCmd.AddCommand(publishCmd)
 }

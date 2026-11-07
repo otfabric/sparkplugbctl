@@ -17,8 +17,9 @@ var (
 )
 
 var encodeCmd = &cobra.Command{
-	Use:   "encode",
-	Short: "Encode a Sparkplug B payload to Protobuf",
+	ValidArgsFunction: cobra.NoFileCompletions,
+	Use:               "encode",
+	Short:             "Encode a Sparkplug B payload to Protobuf",
 	Long: `Encode creates a Sparkplug B Protobuf payload from the given metrics
 and writes it to stdout or a file.
 
@@ -33,6 +34,9 @@ func init() {
 	encodeCmd.Flags().StringSliceVar(&encodeMetrics, "metric", nil, "metric in name:type=value format (repeatable)")
 	encodeCmd.Flags().Uint64Var(&encodeSeq, "seq", 0, "sequence number")
 	encodeCmd.Flags().StringVar(&encodeFile, "file", "", "write output to file (default: stdout)")
+	completeFlags(encodeCmd, cobra.NoFileCompletions, "seq")
+	completeFlags(encodeCmd, completeMetric, "metric")
+	completeFlags(encodeCmd, anyFile, "file")
 	rootCmd.AddCommand(encodeCmd)
 }
 

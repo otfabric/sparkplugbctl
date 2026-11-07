@@ -27,8 +27,9 @@ var (
 )
 
 var edgeCmd = &cobra.Command{
-	Use:   "edge",
-	Short: "Simulate a Sparkplug B edge node",
+	ValidArgsFunction: cobra.NoFileCompletions,
+	Use:               "edge",
+	Short:             "Simulate a Sparkplug B edge node",
 	Long: `Edge simulates a full Sparkplug B edge node lifecycle:
 Connect → NBIRTH → DBIRTH(s) → DATA loop → Ctrl+C → DDEATH(s) → NDEATH → Disconnect
 
@@ -44,6 +45,8 @@ func init() {
 	edgeCmd.Flags().StringSliceVar(&edgeMetrics, "metric", nil, "node metrics as name:type=value (repeatable)")
 	edgeCmd.Flags().DurationVar(&edgeInterval, "interval", 5*time.Second, "data publish interval")
 	edgeCmd.Flags().StringVar(&edgePrimaryHost, "primary-host", "", "primary host application ID")
+	completeFlags(edgeCmd, cobra.NoFileCompletions, "group", "node", "device", "interval", "primary-host")
+	completeFlags(edgeCmd, completeMetric, "metric")
 	_ = edgeCmd.MarkFlagRequired("group")
 	_ = edgeCmd.MarkFlagRequired("node")
 	rootCmd.AddCommand(edgeCmd)

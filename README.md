@@ -30,6 +30,8 @@ From source (Go 1.27.3+): `go install github.com/otfabric/sparkplugbctl@latest`
 
 ### Shell completion
 
+Besides the commands and flags, the type in `--metric name:type=value` completes, and the TLS flags complete `.pem`, `.crt`, `.cer` and `.key` files.
+
 ```bash
 # bash (needs the bash-completion package)
 mkdir -p ~/.local/share/bash-completion/completions
@@ -318,15 +320,25 @@ Generate shell completion scripts for bash, zsh, fish and PowerShell; how to ins
 
 ```bash
 sparkplugbctl version
+sparkplugbctl version --json
 ```
 
+One line on stdout. A release build:
+
 ```
-sparkplugbctl 0.1.0
-  commit:  e38c75bdb1b909fb91ff3f735d746cf42145f169
-  built:   2026-10-27T12:12:45Z
-  library: go-sparkplugb v0.1.2
-  go:      go1.27.3
-  os/arch: darwin/arm64
+sparkplugbctl 0.4.0 (tag v0.4.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-11-05T15:41:49Z, go-sparkplugb 0.3.3, go1.27.3, darwin/arm64)
+```
+
+A development build (`go build`, `go run`, or `make build` off a tag; `go install …@vX.Y.Z` reports that version):
+
+```
+sparkplugbctl dev (commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e-dirty, built unknown, go-sparkplugb 0.3.3, go1.27.3, darwin/arm64)
+```
+
+With `--json` (or `SPARKPLUGBCTL_FORMAT=json`) it prints one JSON object; the fields are in [docs/json-output.md](docs/json-output.md#version).
+
+```json
+{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-11-05T15:41:49Z","libraries":[{"name":"go-sparkplugb","version":"0.3.3"}],"go":"go1.27.3","platform":"darwin/arm64"}
 ```
 
 ---
