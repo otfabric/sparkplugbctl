@@ -49,9 +49,15 @@ func TestVersionPrintsTheBuiltVersion(t *testing.T) {
 	if !strings.HasPrefix(output, "sparkplugbctl "+want+" (") || strings.Count(output, "\n") != 1 {
 		t.Fatalf("output is not one line naming sparkplugbctl %s:\n%s", want, output)
 	}
+	if !strings.Contains(output, ", go-sparkplugb ") {
+		t.Fatalf("version does not name go-sparkplugb:\n%s", output)
+	}
 	output, code = run(t, "version", "--json")
 	if code != 0 || !strings.HasPrefix(output, `{"name":"sparkplugbctl","version":"`+want+`","tag":`) {
 		t.Fatalf("version --json: exit %d\n%s", code, output)
+	}
+	if !strings.Contains(output, `"libraries":[{"name":"go-sparkplugb","version":"`) {
+		t.Fatalf("version --json does not list go-sparkplugb:\n%s", output)
 	}
 }
 

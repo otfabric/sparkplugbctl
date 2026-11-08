@@ -1,5 +1,22 @@
 # sparkplugbctl Releases
 
+## v0.4.1
+
+**Date:** 2026-11-08
+**Previous release:** v0.4.0
+
+### Changed
+
+- Built on go-sparkplugb v0.3.4 (was v0.3.3). Its `edge` fix makes a rebirth (`Node.Rebirth`, and so the answer to an NCMD rebirth) publish the DBIRTHs in the order the devices were first born, instead of map order, and reads the devices' state under the lock, which removes a data race with a device death or data published at the same time. `version` lists `go-sparkplugb 0.3.4`.
+- The minimum Go version is now 1.26.0 (was 1.27.3): `go.mod` declares `go 1.26.0`, and CI tests Go 1.26 and 1.27.
+- Release binaries are built with the latest Go 1.26 patch release (otfabric/.github release workflow v3.6.0); they were built with the exact Go version in `go.mod`.
+
+### Tests
+
+- `TestVersion` passes on Go 1.26, whose test binaries record no dependencies, so the expected line has no libraries there; the e2e test checks that the built binary names go-sparkplugb in `version` and `version --json`.
+
+---
+
 ## v0.4.0
 
 **Date:** 2026-11-07
