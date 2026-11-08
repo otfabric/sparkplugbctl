@@ -2,7 +2,7 @@
 
 Sparkplug B 3.0.0 CLI for MQTT monitoring, publishing, simulation and debugging.
 
-[![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/otfabric/sparkplugbctl/actions/workflows/ci.yaml/badge.svg)](https://github.com/otfabric/sparkplugbctl/actions/workflows/ci.yaml)
 [![Release](https://img.shields.io/github/v/release/otfabric/sparkplugbctl?include_prereleases)](https://github.com/otfabric/sparkplugbctl/releases)
@@ -26,7 +26,7 @@ irm https://get.otfabric.io/sparkplugbctl.ps1 | iex
 
 Linux (amd64, arm64, armv7), macOS (Intel, Apple silicon) and Windows (amd64, arm64). The installer verifies the release's SHA-256 checksum, installs per user without `sudo` (`~/.local/bin`, Windows `%LOCALAPPDATA%\OTFabric\bin`), and upgrades in place when run again. Pin a version with `OTF_VERSION=x.y.z`; for CI, containers and device images use `OTF_UNMANAGED_INSTALL=<dir>`; all options: [otfabric/install](https://github.com/otfabric/install#options). For offline machines, the archives and checksums are on [Releases](https://github.com/otfabric/sparkplugbctl/releases).
 
-From source (Go 1.27.3+): `go install github.com/otfabric/sparkplugbctl@latest`
+From source (Go 1.26.0+): `go install github.com/otfabric/sparkplugbctl@latest`
 
 ### Shell completion
 

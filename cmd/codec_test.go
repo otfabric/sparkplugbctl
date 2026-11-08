@@ -29,10 +29,13 @@ func TestVersion(t *testing.T) {
 	defer func(v, tg, c, d string) { Version, Tag, Commit, BuildDate = v, tg, c, d }(Version, Tag, Commit, BuildDate)
 	Version, Tag, Commit, BuildDate = "0.4.0", "v0.4.0", "1802d0f9afe8642d1e278120b76fcdfac967cb9e", "2026-11-05T15:41:49Z"
 	platform := runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH
-	lib := sparkplugbVersion(t)
-	wantText := "sparkplugbctl 0.4.0 (tag v0.4.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-11-05T15:41:49Z, go-sparkplugb " + lib + ", " + platform + ")\n"
+	libText, libJSON := "", "[]"
+	if lib, ok := sparkplugbVersion(t); ok {
+		libText, libJSON = "go-sparkplugb "+lib+", ", `[{"name":"go-sparkplugb","version":"`+lib+`"}]`
+	}
+	wantText := "sparkplugbctl 0.4.0 (tag v0.4.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-11-05T15:41:49Z, " + libText + platform + ")\n"
 	wantJSON := `{"name":"sparkplugbctl","version":"0.4.0","tag":"v0.4.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e",` +
-		`"built":"2026-11-05T15:41:49Z","libraries":[{"name":"go-sparkplugb","version":"` + lib + `"}],"go":"` + runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
+		`"built":"2026-11-05T15:41:49Z","libraries":` + libJSON + `,"go":"` + runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
 
 	t.Setenv("SPARKPLUGBCTL_FORMAT", "")
 	t.Setenv("SPARKPLUGBCTL_OUTPUT_FORMAT", "")
@@ -61,20 +64,26 @@ func TestVersion(t *testing.T) {
 }
 
 // sparkplugbVersion is the go-sparkplugb version of the test binary, without
-// the leading v.
-func sparkplugbVersion(t *testing.T) string {
+// the leading v. ok is false when the build information of the test binary
+// lists no dependencies: Go 1.26 records none in a test binary (Go 1.27 does),
+// and then the version line lists no libraries. The e2e test checks that a
+// built binary names go-sparkplugb.
+func sparkplugbVersion(t *testing.T) (version string, ok bool) {
 	t.Helper()
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
 		t.Fatal("no build information")
 	}
+	if len(bi.Deps) == 0 {
+		return "", false
+	}
 	for _, d := range bi.Deps {
 		if d.Path == "github.com/otfabric/go-sparkplugb" {
-			return strings.TrimPrefix(d.Version, "v")
+			return strings.TrimPrefix(d.Version, "v"), true
 		}
 	}
 	t.Fatal("go-sparkplugb is not a dependency")
-	return ""
+	return "", false
 }
 
 // TestEnvironment checks that a global flag comes from its SPARKPLUGBCTL_

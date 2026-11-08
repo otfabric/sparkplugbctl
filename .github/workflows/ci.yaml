@@ -22,7 +22,7 @@ jobs:
       coverage-min: "90"
       test-exclude-regex: "/example(s)?($|/)"
       codecov-name: sparkplugbctl
-      go-versions: '["1.27"]'
+      go-versions: '["1.26", "1.27"]'
       golangci-lint-version: v2.15.0
       policy-version: v1.4.2
     secrets: inherit
