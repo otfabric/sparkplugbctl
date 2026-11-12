@@ -1,5 +1,18 @@
 # sparkplugbctl Releases
 
+## v0.4.2
+
+**Date:** 2026-11-12
+**Previous release:** v0.4.1
+
+### Fixed
+
+- Through go-sparkplugb v0.3.5 (was v0.3.4), for `edge`: an NDATA published while the node answers an NCMD rebirth no longer goes out after the new NBIRTH with a `seq` of the ending session, and no NDATA goes out between the NBIRTH and the DBIRTHs; it waits and follows them. A host took such a message for the new session's message with that `seq` and lost the latter (go-sparkplugb#24). An NBIRTH is also stamped in a later millisecond than the message before it, unless the clock went back.
+- Through go-sparkplugb v0.3.5, for every command that publishes: a publish that gives up on its context or timeout (`publish` on Ctrl+C, the DDEATHs of `edge` at shutdown) can no longer be overtaken by a later message, and one whose context has already ended is not sent. `sparkplugbctl` code is unchanged; `version` lists `go-sparkplugb 0.3.5`.
+- `make build` marks the commit `-dirty` when the working tree has changes, as `go build` does. Release binaries are unchanged: the release workflow sets the commit.
+
+---
+
 ## v0.4.1
 
 **Date:** 2026-11-08
