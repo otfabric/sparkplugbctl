@@ -8,7 +8,7 @@ Sparkplug B 3.0.0 CLI for MQTT monitoring, publishing, simulation and debugging.
 [![Release](https://img.shields.io/github/v/release/otfabric/sparkplugbctl?include_prereleases)](https://github.com/otfabric/sparkplugbctl/releases)
 
 sparkplugbctl is a command-line tool for exploring, monitoring, publishing,
-simulating and debugging [Eclipse Sparkplug B 3.0.0](https://www.eclipse.org/tahu/spec/sparkplug_spec.pdf)
+simulating and debugging [Eclipse Sparkplug B 3.0.0](https://sparkplug.eclipse.org/specification/version/3.0/documents/sparkplug-specification-3.0.0.pdf)
 MQTT infrastructure. Built in Go on
 [go-sparkplugb](https://github.com/otfabric/go-sparkplugb).
 
