@@ -1,5 +1,16 @@
 # sparkplugbctl Releases
 
+## v0.4.3
+
+**Date:** 2026-11-12
+**Previous release:** v0.4.2
+
+### Changed
+
+- go-sparkplugb v0.3.6 (was v0.3.5): its interop suite pins sparkplugb-interop v0.4.0; the library does not change. `sparkplugbctl` code is unchanged; `version` lists `go-sparkplugb 0.3.6`.
+
+---
+
 ## v0.4.2
 
 **Date:** 2026-11-12
