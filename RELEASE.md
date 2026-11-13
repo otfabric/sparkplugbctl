@@ -1,5 +1,16 @@
 # sparkplugbctl Releases
 
+## v0.4.4
+
+**Date:** 2026-11-13
+**Previous release:** v0.4.3
+
+### Changed
+
+- go-sparkplugb v0.4.0 (was v0.3.6). For `host` and `app`, a received template that breaks the Sparkplug 3.0.0 rules is printed as a `[WARN]` line on stderr: an instance of a definition that is not in the NBIRTH, a definition outside the NBIRTH or with a `template_ref`, a member or parameter the definition does not have, or a birth instance that lacks members. The message is still shown. The SparkplugNet 1.4.1 edge node, for one, sends its definitions with an empty `template_ref`, so each of its NBIRTHs prints such a warning. `edge` and `publish` send scalar metrics only, so the new publish-side template errors of go-sparkplugb cannot arise in them. The `sparkplugbctl` code is unchanged, and `version` lists `go-sparkplugb 0.4.0`.
+
+---
+
 ## v0.4.3
 
 **Date:** 2026-11-12
