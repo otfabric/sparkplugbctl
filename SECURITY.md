@@ -39,3 +39,7 @@ Sparkplug B runs over MQTT and relies on the broker for authentication, authoriz
 ### Data From the Broker Is Untrusted Input
 
 Payloads received from a broker come from other clients. Treat what `sparkplugbctl` prints as untrusted: validate values before acting on them, and escape strings before putting them in HTML, SQL or shell commands.
+
+### Static Analysis
+
+Gosec and Opengrep do not run in public CI (otfabric/engineering ADR-0011, rule GO-014): a maintainer scans sparkplugbctl on their own machine with `cd ../engineering && make sast REPO=sparkplugbctl` in a checkout of [otfabric/engineering](https://github.com/otfabric/engineering) beside this one before each release. Gosec findings are fixed in the code: there is no `nolint` or `#nosec` comment and no lint exclusion. A finding that is accepted instead is recorded in a private triage repository, never in this one: the file `decode --file` reads is the one the operator names, and the simulated values of `edge` draw from `math/rand/v2`. `encode --file` creates its output file for the owner only (`0600`); TLS always verifies the broker.

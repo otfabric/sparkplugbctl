@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -55,7 +57,7 @@ func (p *Printer) PrintState(t topic.Topic, data []byte) error {
 	}
 	sv := StateView{Topic: t.String(), Type: t.Type.String(), HostID: t.EdgeNodeID, Online: *st.Online}
 	if st.Timestamp != 0 {
-		sv.Time = time.UnixMilli(int64(st.Timestamp)).UTC().Format(time.RFC3339)
+		sv.Time = millisTime(st.Timestamp)
 	}
 	if p.JSON {
 		enc := json.NewEncoder(p.W)
@@ -90,7 +92,7 @@ func (p *Printer) PrintMessage(t topic.Topic, pl *pb.Payload) {
 		Seq:      pl.GetSeq(),
 	}
 	if pl.Timestamp != nil {
-		mv.Time = time.UnixMilli(int64(*pl.Timestamp)).UTC().Format(time.RFC3339)
+		mv.Time = millisTime(*pl.Timestamp)
 	}
 	for _, m := range pl.Metrics {
 		mv.Metrics = append(mv.Metrics, metricView(m))
@@ -130,7 +132,7 @@ func (p *Printer) PrintPayload(pl *pb.Payload) {
 			Metrics []MetricView `json:"metrics"`
 		}{Seq: pl.GetSeq()}
 		if pl.Timestamp != nil {
-			mv.Time = time.UnixMilli(int64(*pl.Timestamp)).UTC().Format(time.RFC3339)
+			mv.Time = millisTime(*pl.Timestamp)
 		}
 		for _, m := range pl.Metrics {
 			mv.Metrics = append(mv.Metrics, metricView(m))
@@ -143,7 +145,7 @@ func (p *Printer) PrintPayload(pl *pb.Payload) {
 
 	_, _ = fmt.Fprintf(p.W, "seq=%d", pl.GetSeq())
 	if pl.Timestamp != nil {
-		_, _ = fmt.Fprintf(p.W, "  ts=%s", time.UnixMilli(int64(*pl.Timestamp)).UTC().Format(time.RFC3339))
+		_, _ = fmt.Fprintf(p.W, "  ts=%s", millisTime(*pl.Timestamp))
 	}
 	_, _ = fmt.Fprintln(p.W)
 
@@ -171,7 +173,7 @@ func metricView(m *pb.Payload_Metric) MetricView {
 		}
 	}
 	if m.Timestamp != nil {
-		mv.Timestamp = time.UnixMilli(int64(*m.Timestamp)).UTC().Format(time.RFC3339)
+		mv.Timestamp = millisTime(*m.Timestamp)
 	}
 
 	val, err := payload.GetValue(m)
@@ -208,6 +210,16 @@ func qualityName(q int32) string {
 	default:
 		return fmt.Sprintf("%d", q)
 	}
+}
+
+// millisTime formats a timestamp of the message, milliseconds since the epoch,
+// as RFC 3339 in UTC. One past math.MaxInt64 has no time.Time and is printed
+// as its number, rather than wrapping to a time before the epoch.
+func millisTime(ms uint64) string {
+	if ms > math.MaxInt64 {
+		return strconv.FormatUint(ms, 10)
+	}
+	return time.UnixMilli(int64(ms)).UTC().Format(time.RFC3339)
 }
 
 func dataTypeName(dt pb.DataType) string {

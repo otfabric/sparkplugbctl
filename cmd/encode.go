@@ -53,7 +53,7 @@ func runEncode(cmd *cobra.Command, args []string) error {
 	}
 
 	if encodeFile != "" {
-		if err := os.WriteFile(encodeFile, data, 0644); err != nil {
+		if err := os.WriteFile(encodeFile, data, 0o600); err != nil {
 			return withExit(ExitInternal, fmt.Errorf("write %s: %w", encodeFile, err))
 		}
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Wrote %d bytes to %s\n", len(data), encodeFile)

@@ -1,5 +1,34 @@
 # sparkplugbctl Releases
 
+## v0.4.5
+
+**Date:** 2026-11-13
+**Previous release:** v0.4.4
+
+SAST / Go 1.26 hardening release: go-sparkplugb v0.4.1, a static analysis pass and otfabric/engineering policy 1.5. Exit codes and the JSON fields are unchanged.
+
+### Changed
+
+- go-sparkplugb v0.4.1 (was v0.4.0): the element count of a received BooleanArray is held to the library's limit on 32-bit platforms (`linux/arm/v7`) too; `version` lists `go-sparkplugb 0.4.1`.
+- `encode --file` creates the payload file with mode `0600` (was `0644`), as the other OT Fabric tools do for the files they write.
+- otfabric/engineering policy 1.5 (was 1.4): `.otfabric/policy.yaml`, the policy checker v1.5.0 in CI and the docs check, and the shared workflows v3.6.0. `otfabric-policy check` v1.5.0: compliant, no failing rule.
+
+### Fixed
+
+- A message, metric or STATE timestamp past 2^63-1 milliseconds was printed as a date before 1970; it is now printed as its number of milliseconds (docs/json-output.md).
+
+### Security
+
+- SAST review of sparkplugbctl (gosec, opengrep at severity and confidence low): 10 findings, 7 fixed in code (the timestamp conversions above, the file mode of `encode --file`, a `defer` in the publish loop of `edge` that ran once and is now a plain call) and 3 recorded as false positives in a private triage repository, not in this one (the datatype of a metric, which an unknown value cannot alias; the file the operator names for `decode --file`; `math/rand/v2` for the simulated values of `edge`). There is no `nolint` or `#nosec`.
+- SECURITY.md has a Static Analysis section.
+
+### Tests
+
+- `TestTimestampOutOfRange`: payload, metric and STATE timestamps of 2^64-1 ms, as text and JSON, and the formatting at 2^63-1 ms.
+- `TestEncodeDecodeFile` checks that the file `encode --file` writes has no group or other access.
+
+---
+
 ## v0.4.4
 
 **Date:** 2026-11-13
