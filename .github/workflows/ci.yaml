@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   ci:
-    uses: otfabric/.github/.github/workflows/go-ci.yml@v3.3.0
+    uses: otfabric/.github/.github/workflows/go-ci.yml@v3.6.0
     with:
       run-govulncheck: true
       fuzz-time: 10s
@@ -24,7 +24,7 @@ jobs:
       codecov-name: sparkplugbctl
       go-versions: '["1.26", "1.27"]'
       golangci-lint-version: v2.15.0
-      policy-version: v1.4.2
+      policy-version: v1.5.0
     secrets: inherit
 
   # The per-package floor (COVER_PKG_MIN in the Makefile) on top of the

@@ -165,8 +165,13 @@ func TestEncodeDecodeFile(t *testing.T) {
 	if !strings.Contains(stderr, "Wrote") || !strings.Contains(stderr, path) {
 		t.Fatalf("stderr = %q", stderr)
 	}
-	if _, err := os.Stat(path); err != nil {
+	fi, err := os.Stat(path)
+	if err != nil {
 		t.Fatal(err)
+	}
+	// Created for the owner only (the umask can only narrow it).
+	if runtime.GOOS != "windows" && fi.Mode().Perm()&0o077 != 0 {
+		t.Errorf("mode = %v, want no group or other access", fi.Mode().Perm())
 	}
 	out, _, err := run(t, nil, "decode", "--file", path)
 	if err != nil {

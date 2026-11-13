@@ -9,7 +9,7 @@ Field names are a contract for scripts (`internal/output/output.go`, `appEvent` 
 | Concept | Form |
 |---|---|
 | Names | snake_case |
-| Times | RFC 3339 in UTC at second precision, from the millisecond timestamp in the message (`2026-10-18T09:12:03Z`). `app` events are the exception: local time of receipt, with its offset |
+| Times | RFC 3339 in UTC at second precision, from the millisecond timestamp in the message (`2026-10-18T09:12:03Z`); a timestamp past 2^63-1 ms, which has no date, is its number of milliseconds as text. `app` events are the exception: local time of receipt, with its offset |
 | Framing | `decode` and `listen` write indented JSON, one document per payload or message: read a stream with a JSON decoder, not line by line. `app` writes one compact object per line |
 
 ## Metric

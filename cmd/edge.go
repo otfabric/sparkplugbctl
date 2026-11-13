@@ -150,12 +150,12 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		case <-ctx.Done():
 			_, _ = fmt.Fprintln(stderr, "\nShutting down edge node...")
 			shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer shutCancel()
 			for _, devID := range edgeDevices {
 				_ = node.PublishDeviceDeath(shutCtx, devID)
 				_, _ = fmt.Fprintf(stderr, "Published DDEATH for %s\n", devID)
 			}
 			_ = node.Disconnect(shutCtx)
+			shutCancel()
 			_, _ = fmt.Fprintln(stderr, "Disconnected")
 			return nil
 

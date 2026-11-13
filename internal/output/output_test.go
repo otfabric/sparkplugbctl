@@ -209,3 +209,54 @@ func TestPrintJSONNonFinite(t *testing.T) {
 		}
 	}
 }
+
+// A timestamp past the int64 range of milliseconds is printed as its number,
+// not wrapped to a time before the epoch.
+func TestTimestampOutOfRange(t *testing.T) {
+	const big = uint64(math.MaxUint64)
+	if got := millisTime(big); got != "18446744073709551615" {
+		t.Errorf("millisTime(MaxUint64) = %q", got)
+	}
+	if got := millisTime(math.MaxInt64); !strings.HasPrefix(got, "292278994-") {
+		t.Errorf("millisTime(MaxInt64) = %q", got)
+	}
+	if got := millisTime(1_700_000_000_000); got != "2023-11-14T22:13:20Z" {
+		t.Errorf("millisTime = %q", got)
+	}
+
+	m, _ := payload.NewMetric("m", pb.DataType_Double, 1.5)
+	m.Timestamp = proto.Uint64(big)
+	p := &pb.Payload{Timestamp: proto.Uint64(big), Seq: proto.Uint64(1), Metrics: []*pb.Payload_Metric{m}}
+
+	var buf bytes.Buffer
+	(&Printer{W: &buf}).PrintPayload(p)
+	if out := buf.String(); !strings.Contains(out, "ts=18446744073709551615") || strings.Contains(out, "1969") {
+		t.Errorf("text payload:\n%s", out)
+	}
+
+	buf.Reset()
+	(&Printer{W: &buf, JSON: true}).PrintPayload(p)
+	var pv struct {
+		Time    string `json:"timestamp"`
+		Metrics []MetricView
+	}
+	if err := json.Unmarshal(buf.Bytes(), &pv); err != nil {
+		t.Fatal(err)
+	}
+	if pv.Time != "18446744073709551615" || len(pv.Metrics) != 1 || pv.Metrics[0].Timestamp != "18446744073709551615" {
+		t.Errorf("JSON payload: %s", buf.String())
+	}
+
+	tp, _ := topic.Parse("spBv1.0/STATE/host1")
+	buf.Reset()
+	if err := (&Printer{W: &buf, JSON: true}).PrintState(tp, []byte(`{"online":true,"timestamp":18446744073709551615}`)); err != nil {
+		t.Fatal(err)
+	}
+	var sv StateView
+	if err := json.Unmarshal(buf.Bytes(), &sv); err != nil {
+		t.Fatal(err)
+	}
+	if sv.Time != "18446744073709551615" {
+		t.Errorf("STATE: %s", buf.String())
+	}
+}
