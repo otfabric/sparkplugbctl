@@ -65,7 +65,7 @@ func applyEnv(fs *pflag.FlagSet) error {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&brokerURL, "broker", "tcp://localhost:1883", "MQTT broker URL")
-	rootCmd.PersistentFlags().StringVar(&clientID, "client-id", "", "MQTT client ID (auto-generated if empty)")
+	rootCmd.PersistentFlags().StringVar(&clientID, "client-id", "", "MQTT client ID (default: sparkplugbctl-<command>-<8 random hex digits>; host and edge derive it from their IDs)")
 	rootCmd.PersistentFlags().StringVar(&username, "username", "", "MQTT username")
 	rootCmd.PersistentFlags().StringVar(&password, "password", "", "MQTT password")
 	rootCmd.PersistentFlags().StringVar(&tlsCert, "tls-cert", "", "TLS client certificate file")

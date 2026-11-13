@@ -51,7 +51,7 @@ func runListen(cmd *cobra.Command, args []string) error {
 
 	cid := clientID
 	if cid == "" {
-		cid = "sparkplugbctl-listen"
+		cid = randomClientID("listen")
 	}
 
 	lost := make(chan error, 1)

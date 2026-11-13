@@ -96,13 +96,21 @@ sparkplugbctl
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--broker` | `tcp://localhost:1883` | MQTT broker URL |
-| `--client-id` | auto-generated | MQTT client ID |
+| `--client-id` | per command, see below | MQTT client ID |
 | `--username` | | MQTT username |
 | `--password` | | MQTT password |
 | `--tls-cert` | | TLS client certificate file |
 | `--tls-key` | | TLS client key file |
 | `--tls-ca` | | TLS CA certificate file |
 | `--json` | `false` | Output as JSON |
+
+Without `--client-id`, `app`, `listen` and `publish` connect as
+`sparkplugbctl-<command>-` and 8 random hex digits, e.g.
+`sparkplugbctl-listen-3f9a0c1e`, a new one for each run: a broker disconnects a
+client when another connects with its client ID, so two runs against one broker
+must not share one. `host` connects as `sparkplugbctl-host-<host-id>` and `edge`
+as `sparkplugbctl-edge-<group>-<node>`, after their Sparkplug identity, which
+must be unique on the broker anyway. A `--client-id` is used as given.
 
 ---
 
@@ -387,7 +395,7 @@ precedence when both are set.
 | Variable | Flag | Default |
 |----------|------|---------|
 | `SPARKPLUGBCTL_BROKER` | `--broker` | `tcp://localhost:1883` |
-| `SPARKPLUGBCTL_CLIENT_ID` | `--client-id` | auto-generated |
+| `SPARKPLUGBCTL_CLIENT_ID` | `--client-id` | per command, see [Global flags](#global-flags) |
 | `SPARKPLUGBCTL_USERNAME` | `--username` | |
 | `SPARKPLUGBCTL_PASSWORD` | `--password` | |
 | `SPARKPLUGBCTL_TLS_CERT` | `--tls-cert` | |

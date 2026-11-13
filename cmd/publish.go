@@ -69,7 +69,7 @@ func runPublish(cmd *cobra.Command, args []string) error {
 
 	cid := clientID
 	if cid == "" {
-		cid = "sparkplugbctl-publish"
+		cid = randomClientID("publish")
 	}
 
 	err = transport.Connect(ctx, mqtt.ConnectOpts{

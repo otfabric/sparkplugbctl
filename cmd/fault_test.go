@@ -121,6 +121,38 @@ func TestListenSubscribeFault(t *testing.T) {
 	}
 }
 
+// TestConnectAfterConnackFaults checks that app, host and edge report a
+// Connect that fails after the CONNACK as a connect error, and that the
+// connection is closed rather than left up with its will armed
+// (go-sparkplugb v0.4.2).
+func TestConnectAfterConnackFaults(t *testing.T) {
+	cases := map[string]struct {
+		args []string
+		tr   *faultTransport
+	}{
+		"app/subscribe":              {[]string{"app"}, &faultTransport{subscribeErr: errInjected}},
+		"host/subscribe":             {[]string{"host", "--host-id", "h"}, &faultTransport{subscribeErr: errInjected}},
+		"host/STATE birth":           {[]string{"host", "--host-id", "h"}, &faultTransport{failTopic: "/STATE/", publishErr: errInjected}},
+		"edge/subscribe":             {[]string{"edge", "--group", "g", "--node", "n"}, &faultTransport{subscribeErr: errInjected}},
+		"edge/subscribe primaryhost": {[]string{"edge", "--group", "g", "--node", "n", "--primary-host", "h"}, &faultTransport{subscribeErr: errInjected}},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			injectTransport(t, c.tr)
+			_, _, err := run(t, nil, c.args...)
+			if !errors.Is(err, errInjected) || !strings.HasPrefix(err.Error(), "connect: ") {
+				t.Fatalf("error = %v, want a connect error wrapping the fault", err)
+			}
+			if got := ExitCode(err); got != ExitTransport {
+				t.Errorf("exit %d, want %d", got, ExitTransport)
+			}
+			if got := c.tr.disconnected(); got != 1 {
+				t.Errorf("disconnects = %d, want 1", got)
+			}
+		})
+	}
+}
+
 func TestPublishFault(t *testing.T) {
 	tr := &faultTransport{publishErr: errInjected}
 	injectTransport(t, tr)

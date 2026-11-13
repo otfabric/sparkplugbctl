@@ -1,5 +1,28 @@
 # sparkplugbctl Releases
 
+## v0.4.6
+
+**Date:** 2026-11-13
+**Previous release:** v0.4.5
+
+Exit codes and the JSON fields are unchanged.
+
+### Changed
+
+- go-sparkplugb v0.4.2 (was v0.4.1). In `edge`, `host` and `app`, a `Connect` that fails after the broker's CONNACK — a subscription, or the STATE birth of `host` — now closes the connection with a DISCONNECT instead of leaving it up with its will armed until the command exits; `host` first publishes its STATE death when its STATE birth may have reached the broker. The command still exits with the `connect:` error and exit code it had. The library's default client ID of an application is now `sparkplug_app_` and 8 hex digits from `crypto/rand` (was the clock modulo 100000); `sparkplugbctl app` sets its own, below. `version` lists `go-sparkplugb 0.4.2`.
+
+### Fixed
+
+- Without `--client-id`, `listen` connected as `sparkplugbctl-listen` and `publish` as `sparkplugbctl-publish`, so two of them at once against one broker disconnected each other (a broker drops a client when another connects with its client ID, MQTT-3.1.4-2). `app` used the clock modulo 100000, at most 100000 IDs and 100 on a clock of microseconds. `app`, `listen` and `publish` now connect as `sparkplugbctl-<command>-` and 8 random hex digits from `crypto/rand`, a new one each run, e.g. `sparkplugbctl-listen-3f9a0c1e`. `host` (`sparkplugbctl-host-<host-id>`) and `edge` (`sparkplugbctl-edge-<group>-<node>`) keep the IDs of their Sparkplug identity. A `--client-id` or `SPARKPLUGBCTL_CLIENT_ID` is used as given. The `--client-id` help and README.md describe the defaults. The new defaults are 26 to 30 bytes: MQTT 3.1.1 obliges a broker to accept 1 to 23 and lets it accept more (mochi-mqtt, which the tests run against, does); for a broker that holds to 23, `--client-id` sets a shorter one, as for the `host` and `edge` IDs.
+
+### Tests
+
+- `TestRandomClientID`: the format of the default of `app`, `listen` and `publish` and no repeat in 64 draws.
+- `TestDefaultClientIDs`: the client ID each command connects with: a random ID of that format for `app`, `listen` and `publish`, different in two runs; the fixed ID of `host` and `edge`; `--client-id` and `SPARKPLUGBCTL_CLIENT_ID` as given.
+- `TestConnectAfterConnackFaults`: a failed subscription of `app`, `host` and `edge` (with and without `--primary-host`), and a failed STATE birth of `host`, exit with the `connect:` error and code 4 and close the connection; on go-sparkplugb v0.4.1 the connection was left open.
+
+---
+
 ## v0.4.5
 
 **Date:** 2026-11-13
