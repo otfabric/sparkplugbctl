@@ -46,7 +46,7 @@ func runApp(cmd *cobra.Command, args []string) error {
 
 	cid := clientID
 	if cid == "" {
-		cid = fmt.Sprintf("sparkplugbctl-app-%d", time.Now().UnixNano()%100000)
+		cid = randomClientID("app")
 	}
 
 	cfg := app.Config{
