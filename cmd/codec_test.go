@@ -79,7 +79,16 @@ func sparkplugbVersion(t *testing.T) (version string, ok bool) {
 	}
 	for _, d := range bi.Deps {
 		if d.Path == "github.com/otfabric/go-sparkplugb" {
-			return strings.TrimPrefix(d.Version, "v"), true
+			// As buildinfo reports it: the replacement's version when the
+			// module is replaced (a build against a local checkout).
+			v := d.Version
+			if d.Replace != nil {
+				v = d.Replace.Version
+			}
+			if v = strings.TrimPrefix(v, "v"); v == "" {
+				v = "unknown"
+			}
+			return v, true
 		}
 	}
 	t.Fatal("go-sparkplugb is not a dependency")
