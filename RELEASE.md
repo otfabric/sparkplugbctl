@@ -1,5 +1,22 @@
 # sparkplugbctl Releases
 
+## v0.4.7
+
+**Date:** 2026-11-14
+**Previous release:** v0.4.6
+
+Moves to go-sparkplugb v0.4.3 (was v0.4.2). The commands' options and output are unchanged.
+
+### Changed
+
+- Built on go-sparkplugb v0.4.3 (go-sparkplugb RELEASE.md, v0.4.3). For the tool this means:
+  - A metric, property, template parameter or DataSet cell whose value is carried in another field than its datatype's is reported with the library's type-mismatch error, where a value that is not an integer was shown as zero.
+  - Templates nested more than 32 deep are refused with the library's invalid-template error.
+  - The host commands hold at most 4096 messages and 8 MiB while they wait for a missing sequence number, over all edge nodes, and a held message waits at most 30 s.
+  - A group, edge node or host ID that cannot be a topic segment (`/`, `+`, `#`, or not valid UTF-8) is refused when the client is created.
+
+---
+
 ## v0.4.6
 
 **Date:** 2026-11-13
