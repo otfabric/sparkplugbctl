@@ -1,5 +1,18 @@
 # sparkplugbctl Releases
 
+## v0.4.8
+
+**Date:** 2026-11-15
+**Previous release:** v0.4.7
+
+Moves to go-sparkplugb v0.5.0 (was v0.4.3). The commands' options and output are unchanged.
+
+### Changed
+
+- Built on go-sparkplugb v0.5.0 (go-sparkplugb RELEASE.md, v0.5.0). That release adds opt-in session checks to the library's host and application runtimes; the tool does not set them, so the host commands behave as with v0.4.3.
+
+---
+
 ## v0.4.7
 
 **Date:** 2026-11-14
