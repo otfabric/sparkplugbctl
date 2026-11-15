@@ -61,5 +61,5 @@ func runEncode(cmd *cobra.Command, args []string) error {
 	}
 
 	_, err = cmd.OutOrStdout().Write(data)
-	return err
+	return outputError(err)
 }

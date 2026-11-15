@@ -14,6 +14,7 @@ import (
 	"github.com/otfabric/go-sparkplugb/edge"
 	"github.com/otfabric/go-sparkplugb/payload"
 	pb "github.com/otfabric/go-sparkplugb/proto"
+	"github.com/otfabric/sparkplugbctl/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +55,21 @@ func init() {
 
 func runEdge(cmd *cobra.Command, args []string) error {
 	stderr := cmd.ErrOrStderr()
-	transport, err := newTransport(brokerOpts())
+	// The command line is checked before connecting: the connection arms
+	// the node's NDEATH will, which the broker publishes if the command ends
+	// without a Disconnect.
+	if edgeInterval <= 0 {
+		return withExit(ExitInvalidInput, fmt.Errorf("--interval %s: must be more than 0", edgeInterval))
+	}
+	birthMetrics, err := buildEdgeMetrics(edgeMetrics)
+	if err != nil {
+		return withExit(ExitInvalidInput, err)
+	}
+	opts, err := connOpts(stderr)
+	if err != nil {
+		return err
+	}
+	transport, err := newTransport(opts)
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
 	}
@@ -73,6 +88,8 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		EdgeNodeID:    edgeNode,
 		BrokerURL:     brokerURL,
 		ClientID:      cid,
+		Username:      opts.Username,
+		Password:      opts.Password,
 		PrimaryHostID: edgePrimaryHost,
 		Logger:        &cliLogger{w: stderr},
 		OnState: func(_, s edge.State) {
@@ -87,7 +104,7 @@ func runEdge(cmd *cobra.Command, args []string) error {
 			_, _ = fmt.Fprintf(stderr, "NCMD received: %d metric(s)\n", len(metrics))
 		},
 		OnDeviceCmd: func(deviceID string, metrics []*pb.Payload_Metric) {
-			_, _ = fmt.Fprintf(stderr, "DCMD for %s: %d metric(s)\n", deviceID, len(metrics))
+			_, _ = fmt.Fprintf(stderr, "DCMD for %s: %d metric(s)\n", output.Escape(deviceID), len(metrics))
 		},
 	}
 
@@ -102,14 +119,9 @@ func runEdge(cmd *cobra.Command, args []string) error {
 	if err := node.Connect(ctx); err != nil {
 		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
 	}
-	_, _ = fmt.Fprintf(stderr, "Connected to %s as %s/%s\n", brokerURL, edgeGroup, edgeNode)
+	_, _ = fmt.Fprintf(stderr, "Connected to %s as %s/%s\n", redactURL(brokerURL), edgeGroup, edgeNode)
 	if edgePrimaryHost != "" && node.State() != edge.Online {
 		_, _ = fmt.Fprintf(stderr, "Waiting for primary host %s to be online\n", edgePrimaryHost)
-	}
-
-	birthMetrics, err := buildEdgeMetrics(edgeMetrics)
-	if err != nil {
-		return withExit(ExitInvalidInput, err)
 	}
 
 	births := func() error {
@@ -127,8 +139,8 @@ func runEdge(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	ticker := time.NewTicker(edgeInterval)
-	defer ticker.Stop()
+	ticks, stopTicker := newTicker(edgeInterval)
+	defer stopTicker()
 
 	values := make(map[string]float64)
 	for _, m := range birthMetrics {
@@ -151,7 +163,10 @@ func runEdge(cmd *cobra.Command, args []string) error {
 			_, _ = fmt.Fprintln(stderr, "\nShutting down edge node...")
 			shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 			for _, devID := range edgeDevices {
-				_ = node.PublishDeviceDeath(shutCtx, devID)
+				if err := node.PublishDeviceDeath(shutCtx, devID); err != nil {
+					_, _ = fmt.Fprintf(stderr, "publish DDEATH %s: %v\n", devID, err)
+					continue
+				}
 				_, _ = fmt.Fprintf(stderr, "Published DDEATH for %s\n", devID)
 			}
 			_ = node.Disconnect(shutCtx)
@@ -164,7 +179,7 @@ func runEdge(cmd *cobra.Command, args []string) error {
 				_, _ = fmt.Fprintf(stderr, "%v\n", err)
 			}
 
-		case <-ticker.C:
+		case <-ticks:
 			if node.State() != edge.Online {
 				continue
 			}

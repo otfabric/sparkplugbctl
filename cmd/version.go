@@ -23,13 +23,14 @@ var versionCmd = &cobra.Command{
 	Use:               "version",
 	Short:             "Print version information",
 	ValidArgsFunction: cobra.NoFileCompletions,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		info := buildinfo.Resolve(cmd.Root().Name(), Version, Tag, Commit, BuildDate)
 		line := info.String()
 		if jsonOut {
 			line = info.JSON()
 		}
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), line)
+		return outputError(err)
 	},
 }
 

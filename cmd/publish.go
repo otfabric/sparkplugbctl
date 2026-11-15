@@ -40,14 +40,27 @@ Examples:
 func init() {
 	publishCmd.Flags().StringVar(&pubTopic, "topic", "", "MQTT topic (required)")
 	publishCmd.Flags().StringSliceVar(&pubMetrics, "metric", nil, "metric in name:type=value format (repeatable)")
-	publishCmd.Flags().Uint64Var(&pubSeq, "seq", 0, "sequence number")
+	publishCmd.Flags().Uint64Var(&pubSeq, "seq", 0, "sequence number (0 to 255)")
 	completeFlags(publishCmd, cobra.NoFileCompletions, "topic", "seq")
 	completeFlags(publishCmd, completeMetric, "metric")
 	_ = publishCmd.MarkFlagRequired("topic")
 	rootCmd.AddCommand(publishCmd)
 }
 
+// maxSeq is the largest payload sequence number: Sparkplug 3.0.0 counts
+// from 0 to 255 and starts again at 0.
+const maxSeq = 255
+
 func runPublish(cmd *cobra.Command, args []string) error {
+	// A topic filter is no topic name to publish to (MQTT 3.1.1 section
+	// 4.7.1): a broker delivers such a message to nobody, or ends the
+	// connection.
+	if strings.ContainsAny(pubTopic, "+#") {
+		return withExit(ExitInvalidInput, fmt.Errorf("--topic %q: a topic to publish to has no wildcard (+ or #)", pubTopic))
+	}
+	if pubSeq > maxSeq {
+		return withExit(ExitInvalidInput, fmt.Errorf("--seq %d: a Sparkplug sequence number is 0 to %d", pubSeq, maxSeq))
+	}
 	metrics, err := parseMetrics(pubMetrics)
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
@@ -59,7 +72,11 @@ func runPublish(cmd *cobra.Command, args []string) error {
 		return withExit(ExitInvalidInput, fmt.Errorf("encode: %w", err))
 	}
 
-	transport, err := newTransport(brokerOpts())
+	opts, err := connOpts(cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+	transport, err := newTransport(opts)
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
 	}
@@ -76,8 +93,8 @@ func runPublish(cmd *cobra.Command, args []string) error {
 		BrokerURL:    brokerURL,
 		ClientID:     cid,
 		CleanSession: true,
-		Username:     username,
-		Password:     password,
+		Username:     opts.Username,
+		Password:     opts.Password,
 	})
 	if err != nil {
 		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
@@ -88,8 +105,8 @@ func runPublish(cmd *cobra.Command, args []string) error {
 		return withExit(ExitTransport, fmt.Errorf("publish: %w", err))
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Published %d metric(s) to %s\n", len(metrics), pubTopic)
-	return nil
+	_, err = fmt.Fprintf(cmd.OutOrStdout(), "Published %d metric(s) to %s\n", len(metrics), pubTopic)
+	return outputError(err)
 }
 
 func parseMetrics(specs []string) ([]*pb.Payload_Metric, error) {

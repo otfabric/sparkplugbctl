@@ -12,6 +12,7 @@ import (
 	"github.com/otfabric/go-sparkplugb/host"
 	"github.com/otfabric/go-sparkplugb/mqtt"
 	pb "github.com/otfabric/go-sparkplugb/proto"
+	"github.com/otfabric/sparkplugbctl/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +36,11 @@ func init() {
 
 func runHost(cmd *cobra.Command, args []string) error {
 	stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
-	transport, err := newTransport(brokerOpts())
+	opts, err := connOpts(stderr)
+	if err != nil {
+		return err
+	}
+	transport, err := newTransport(opts)
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
 	}
@@ -45,28 +50,31 @@ func runHost(cmd *cobra.Command, args []string) error {
 		cid = fmt.Sprintf("sparkplugbctl-host-%s", hostID)
 	}
 
+	out := newEventWriter(stdout)
 	cfg := host.Config{
 		HostID:    hostID,
 		BrokerURL: brokerURL,
 		ClientID:  cid,
+		Username:  opts.Username,
+		Password:  opts.Password,
 		Logger:    &cliLogger{w: stderr},
 		OnNodeBirth: func(groupID, nodeID string, metrics []*pb.Payload_Metric) {
-			_, _ = fmt.Fprintf(stdout, "[NBIRTH] %s/%s (%d metrics)\n", groupID, nodeID, len(metrics))
+			out.printf("[NBIRTH] %s/%s (%d metrics)\n", output.Escape(groupID), output.Escape(nodeID), len(metrics))
 		},
 		OnDeviceBirth: func(groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
-			_, _ = fmt.Fprintf(stdout, "[DBIRTH] %s/%s/%s (%d metrics)\n", groupID, nodeID, deviceID, len(metrics))
+			out.printf("[DBIRTH] %s/%s/%s (%d metrics)\n", output.Escape(groupID), output.Escape(nodeID), output.Escape(deviceID), len(metrics))
 		},
 		OnNodeData: func(groupID, nodeID string, metrics []*pb.Payload_Metric) {
-			_, _ = fmt.Fprintf(stdout, "[NDATA]  %s/%s (%d metrics)\n", groupID, nodeID, len(metrics))
+			out.printf("[NDATA]  %s/%s (%d metrics)\n", output.Escape(groupID), output.Escape(nodeID), len(metrics))
 		},
 		OnDeviceData: func(groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
-			_, _ = fmt.Fprintf(stdout, "[DDATA]  %s/%s/%s (%d metrics)\n", groupID, nodeID, deviceID, len(metrics))
+			out.printf("[DDATA]  %s/%s/%s (%d metrics)\n", output.Escape(groupID), output.Escape(nodeID), output.Escape(deviceID), len(metrics))
 		},
 		OnNodeDeath: func(groupID, nodeID string) {
-			_, _ = fmt.Fprintf(stdout, "[NDEATH] %s/%s\n", groupID, nodeID)
+			out.printf("[NDEATH] %s/%s\n", output.Escape(groupID), output.Escape(nodeID))
 		},
 		OnDeviceDeath: func(groupID, nodeID, deviceID string) {
-			_, _ = fmt.Fprintf(stdout, "[DDEATH] %s/%s/%s\n", groupID, nodeID, deviceID)
+			out.printf("[DDEATH] %s/%s/%s\n", output.Escape(groupID), output.Escape(nodeID), output.Escape(deviceID))
 		},
 	}
 
@@ -89,16 +97,20 @@ func runHost(cmd *cobra.Command, args []string) error {
 		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
 	}
 
-	_, _ = fmt.Fprintf(stderr, "Host %s online (broker: %s)\n", hostID, brokerURL)
+	_, _ = fmt.Fprintf(stderr, "Host %s online (broker: %s)\n", hostID, redactURL(brokerURL))
 	_, _ = fmt.Fprintf(stderr, "Listening for edge activity (Ctrl+C to stop)\n")
 
-	<-ctx.Done()
+	var outErr error
+	select {
+	case <-ctx.Done():
+	case outErr = <-out.failed:
+	}
 	_, _ = fmt.Fprintln(stderr, "\nShutting down host...")
 	shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutCancel()
 	_ = app.Disconnect(shutCtx)
 	_, _ = fmt.Fprintln(stderr, "Disconnected")
-	return nil
+	return outputError(outErr)
 }
 
 // Ensure the host command uses the shared transport.Connect path via host.App,

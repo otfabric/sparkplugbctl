@@ -98,7 +98,8 @@ sparkplugbctl
 | `--broker` | `tcp://localhost:1883` | MQTT broker URL |
 | `--client-id` | per command, see below | MQTT client ID |
 | `--username` | | MQTT username |
-| `--password` | | MQTT password |
+| `--password` | | MQTT password; deprecated, it shows in process listings and shell history: use `--password-file` or `SPARKPLUGBCTL_PASSWORD` |
+| `--password-file` | | File holding the MQTT password; one trailing line end (`\n` or `\r\n`) is not part of it. Not together with `--password` |
 | `--tls-cert` | | TLS client certificate file |
 | `--tls-key` | | TLS client key file |
 | `--tls-ca` | | TLS CA certificate file |
@@ -111,6 +112,17 @@ client when another connects with its client ID, so two runs against one broker
 must not share one. `host` connects as `sparkplugbctl-host-<host-id>` and `edge`
 as `sparkplugbctl-edge-<group>-<node>`, after their Sparkplug identity, which
 must be unique on the broker anyway. A `--client-id` is used as given.
+
+`listen`, `publish`, `edge`, `host` and `app` log in with `--username` and the
+password. MQTT carries a password only with a username: a password without
+`--username` is not sent, and a warning says so on stderr.
+
+The `--tls-*` files are used with a `tls://`, `ssl://`, `mqtts://` or `wss://`
+broker URL (also `mqtt+ssl://` and `tcps://`). With any other scheme, or none,
+the connection is not encrypted and the files have no effect: a warning on
+stderr names each such flag and the scheme. A password in the user
+information of `--broker` (`tcp://user:pass@host:1883`) is used to log in,
+and printed as `xxxxx`.
 
 ---
 
@@ -155,12 +167,27 @@ Example output:
 
 A metric with a quality property shows it, e.g. `quality=STALE`.
 
+In the text output, the control characters, bidirectional formatting
+characters, line and paragraph separators and bytes that are not UTF-8 of
+names and string values are printed as Go escapes (`\x1b`, `\u202e`, `\xff`),
+so that what other clients publish cannot act on the terminal; `--json`
+carries the strings as they arrived. The metric lines of a message are
+aligned in columns, in blocks of up to 4096 lines.
+
+A message above `--max-payload` bytes (default 16777216, 16 MiB) is not
+decoded: a line on stderr reports it, as for a payload that does not decode,
+and `listen` goes on.
+
 ### edge
 
 Simulate a Sparkplug B edge node with automatic lifecycle management and
 periodic data publishing. Each device is born with one metric, `status`
 (Boolean). Received NCMD and DCMD messages are reported; a rebirth request
 is answered with new births.
+
+`--metric` and `--interval` are checked before the node connects: a metric
+that does not parse, or an interval that is not more than 0, ends the
+command with exit 3 and nothing is published.
 
 With `--primary-host`, the node waits for that host's STATE to be online
 before its births. When the host goes offline, the node publishes NDEATH,
@@ -263,7 +290,10 @@ Disconnected
 
 ### publish
 
-Publish a single Sparkplug B payload with typed metrics.
+Publish a single Sparkplug B payload with typed metrics. `--topic` is the
+topic to publish to, without the `+` and `#` wildcards of a subscription, and
+`--seq` is 0 to 255, the range of a Sparkplug sequence number; either refused
+ends the command with exit 3 before it connects.
 
 ```bash
 sparkplugbctl publish \
@@ -276,7 +306,9 @@ sparkplugbctl publish \
 ### decode
 
 Decode a binary Sparkplug B Protobuf payload from stdin or a file. Convert
-hex or base64 to binary first.
+hex or base64 to binary first. An input above `--max-payload` bytes (default
+16777216, 16 MiB) is refused with exit 3, after reading one byte more than
+the bound.
 
 ```bash
 # From a file
@@ -390,7 +422,9 @@ including `DateTime`, arrays, `DataSet` and `Template`.
 ## Environment variables
 
 Every global flag can be set via an environment variable. The flag takes
-precedence when both are set.
+precedence when both are set; `--password` on the command line also takes
+precedence over `SPARKPLUGBCTL_PASSWORD_FILE`, and `--password-file` over
+`SPARKPLUGBCTL_PASSWORD`. Both variables set is a usage error (exit 2).
 
 | Variable | Flag | Default |
 |----------|------|---------|
@@ -398,6 +432,7 @@ precedence when both are set.
 | `SPARKPLUGBCTL_CLIENT_ID` | `--client-id` | per command, see [Global flags](#global-flags) |
 | `SPARKPLUGBCTL_USERNAME` | `--username` | |
 | `SPARKPLUGBCTL_PASSWORD` | `--password` | |
+| `SPARKPLUGBCTL_PASSWORD_FILE` | `--password-file` | |
 | `SPARKPLUGBCTL_TLS_CERT` | `--tls-cert` | |
 | `SPARKPLUGBCTL_TLS_KEY` | `--tls-key` | |
 | `SPARKPLUGBCTL_TLS_CA` | `--tls-ca` | |
@@ -414,7 +449,7 @@ Exit codes are listed in [docs/exitcodes.md](docs/exitcodes.md), and the `--json
 |--------|-------------|
 | `make build` | Build the binary to `bin/sparkplugbctl` |
 | `make test` | Run all tests |
-| `make lint` | Run `go vet` and `staticcheck` |
+| `make lint` | Run `staticcheck` (`make vet` runs `go vet`) |
 | `make install` | Install to `$GOPATH/bin` |
 | `make clean` | Remove build artifacts |
 

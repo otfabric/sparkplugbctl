@@ -26,10 +26,15 @@ a file and pretty-prints or JSON-encodes it.`,
 func init() {
 	decodeCmd.Flags().StringVar(&decodeFile, "file", "", "read payload from file (default: stdin)")
 	completeFlags(decodeCmd, anyFile, "file")
+	addMaxPayloadFlag(decodeCmd)
 	rootCmd.AddCommand(decodeCmd)
 }
 
 func runDecode(cmd *cobra.Command, args []string) error {
+	limit, err := payloadLimit()
+	if err != nil {
+		return err
+	}
 	r := cmd.InOrStdin()
 	if decodeFile != "" {
 		f, err := os.Open(decodeFile)
@@ -40,9 +45,14 @@ func runDecode(cmd *cobra.Command, args []string) error {
 		r = f
 	}
 
-	data, err := io.ReadAll(r)
+	// One byte more than the limit tells a payload at the limit from a
+	// larger input, without reading the rest of it.
+	data, err := io.ReadAll(io.LimitReader(r, int64(limit)+1))
 	if err != nil {
 		return fmt.Errorf("read input: %w", err)
+	}
+	if len(data) > limit {
+		return withExit(ExitInvalidInput, fmt.Errorf("read input: larger than %d bytes (--max-payload)", limit))
 	}
 
 	p, err := payload.Decode(data)
@@ -51,6 +61,5 @@ func runDecode(cmd *cobra.Command, args []string) error {
 	}
 
 	printer := &output.Printer{W: cmd.OutOrStdout(), JSON: jsonOut}
-	printer.PrintPayload(p)
-	return nil
+	return outputError(printer.PrintPayload(p))
 }

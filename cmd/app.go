@@ -13,6 +13,7 @@ import (
 
 	"github.com/otfabric/go-sparkplugb/app"
 	pb "github.com/otfabric/go-sparkplugb/proto"
+	"github.com/otfabric/sparkplugbctl/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -26,8 +27,8 @@ var appCmd = &cobra.Command{
 tracks edge nodes and devices, and displays events as they arrive.
 
 Unlike the host command, an application does NOT publish STATE birth/death
-certificates and is not a Primary Host. It passively observes the namespace,
-resolves aliases, and can send NCMD/DCMD commands.`,
+certificates and is not a Primary Host. It passively observes the namespace
+and resolves aliases.`,
 	RunE: runApp,
 }
 
@@ -39,7 +40,11 @@ func init() {
 
 func runApp(cmd *cobra.Command, args []string) error {
 	stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
-	transport, err := newTransport(brokerOpts())
+	opts, err := connOpts(stderr)
+	if err != nil {
+		return err
+	}
+	transport, err := newTransport(opts)
 	if err != nil {
 		return withExit(ExitInvalidInput, err)
 	}
@@ -49,19 +54,22 @@ func runApp(cmd *cobra.Command, args []string) error {
 		cid = randomClientID("app")
 	}
 
+	out := newEventWriter(stdout)
 	cfg := app.Config{
 		BrokerURL: brokerURL,
 		ClientID:  cid,
+		Username:  opts.Username,
+		Password:  opts.Password,
 		Logger:    &cliLogger{w: stderr},
 		OnNodeBirth: func(groupID, nodeID string, metrics []*pb.Payload_Metric) {
 			if appGroup != "" && groupID != appGroup {
 				return
 			}
 			if jsonOut {
-				printJSON(stdout, "NBIRTH", groupID, nodeID, "", metrics)
+				out.report(printJSON(stdout, "NBIRTH", groupID, nodeID, "", metrics))
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(stdout, "%s  [NBIRTH] %s/%s (%d metrics)\n", ts, groupID, nodeID, len(metrics))
+				out.printf("%s  [NBIRTH] %s/%s (%d metrics)\n", ts, output.Escape(groupID), output.Escape(nodeID), len(metrics))
 			}
 		},
 		OnDeviceBirth: func(groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
@@ -69,10 +77,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON(stdout, "DBIRTH", groupID, nodeID, deviceID, metrics)
+				out.report(printJSON(stdout, "DBIRTH", groupID, nodeID, deviceID, metrics))
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(stdout, "%s  [DBIRTH] %s/%s/%s (%d metrics)\n", ts, groupID, nodeID, deviceID, len(metrics))
+				out.printf("%s  [DBIRTH] %s/%s/%s (%d metrics)\n", ts, output.Escape(groupID), output.Escape(nodeID), output.Escape(deviceID), len(metrics))
 			}
 		},
 		OnNodeData: func(groupID, nodeID string, metrics []*pb.Payload_Metric) {
@@ -80,10 +88,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON(stdout, "NDATA", groupID, nodeID, "", metrics)
+				out.report(printJSON(stdout, "NDATA", groupID, nodeID, "", metrics))
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(stdout, "%s  [NDATA]  %s/%s (%d metrics)\n", ts, groupID, nodeID, len(metrics))
+				out.printf("%s  [NDATA]  %s/%s (%d metrics)\n", ts, output.Escape(groupID), output.Escape(nodeID), len(metrics))
 			}
 		},
 		OnDeviceData: func(groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
@@ -91,10 +99,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON(stdout, "DDATA", groupID, nodeID, deviceID, metrics)
+				out.report(printJSON(stdout, "DDATA", groupID, nodeID, deviceID, metrics))
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(stdout, "%s  [DDATA]  %s/%s/%s (%d metrics)\n", ts, groupID, nodeID, deviceID, len(metrics))
+				out.printf("%s  [DDATA]  %s/%s/%s (%d metrics)\n", ts, output.Escape(groupID), output.Escape(nodeID), output.Escape(deviceID), len(metrics))
 			}
 		},
 		OnNodeDeath: func(groupID, nodeID string) {
@@ -102,10 +110,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON(stdout, "NDEATH", groupID, nodeID, "", nil)
+				out.report(printJSON(stdout, "NDEATH", groupID, nodeID, "", nil))
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(stdout, "%s  [NDEATH] %s/%s\n", ts, groupID, nodeID)
+				out.printf("%s  [NDEATH] %s/%s\n", ts, output.Escape(groupID), output.Escape(nodeID))
 			}
 		},
 		OnDeviceDeath: func(groupID, nodeID, deviceID string) {
@@ -113,10 +121,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if jsonOut {
-				printJSON(stdout, "DDEATH", groupID, nodeID, deviceID, nil)
+				out.report(printJSON(stdout, "DDEATH", groupID, nodeID, deviceID, nil))
 			} else {
 				ts := time.Now().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(stdout, "%s  [DDEATH] %s/%s/%s\n", ts, groupID, nodeID, deviceID)
+				out.printf("%s  [DDEATH] %s/%s/%s\n", ts, output.Escape(groupID), output.Escape(nodeID), output.Escape(deviceID))
 			}
 		},
 	}
@@ -133,19 +141,23 @@ func runApp(cmd *cobra.Command, args []string) error {
 		return withExit(ExitTransport, fmt.Errorf("connect: %w", err))
 	}
 
-	_, _ = fmt.Fprintf(stderr, "Application mode (no STATE) — broker: %s\n", brokerURL)
+	_, _ = fmt.Fprintf(stderr, "Application mode (no STATE) — broker: %s\n", redactURL(brokerURL))
 	if appGroup != "" {
 		_, _ = fmt.Fprintf(stderr, "Filtering: group=%s\n", appGroup)
 	}
 	_, _ = fmt.Fprintf(stderr, "Listening for edge activity (Ctrl+C to stop)\n")
 
-	<-ctx.Done()
+	var outErr error
+	select {
+	case <-ctx.Done():
+	case outErr = <-out.failed:
+	}
 	_, _ = fmt.Fprintln(stderr, "\nShutting down application...")
 	shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutCancel()
 	_ = a.Close(shutCtx)
 	_, _ = fmt.Fprintln(stderr, "Disconnected")
-	return nil
+	return outputError(outErr)
 }
 
 type appEvent struct {
@@ -157,7 +169,7 @@ type appEvent struct {
 	Metrics   int    `json:"metrics,omitempty"`
 }
 
-func printJSON(w io.Writer, msgType, groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) {
+func printJSON(w io.Writer, msgType, groupID, nodeID, deviceID string, metrics []*pb.Payload_Metric) (int, error) {
 	ev := appEvent{
 		Timestamp: time.Now().Format(time.RFC3339),
 		Type:      msgType,
@@ -166,6 +178,6 @@ func printJSON(w io.Writer, msgType, groupID, nodeID, deviceID string, metrics [
 		DeviceID:  deviceID,
 		Metrics:   len(metrics),
 	}
-	b, _ := json.Marshal(ev)
-	_, _ = fmt.Fprintln(w, string(b))
+	b, _ := json.Marshal(ev) // strings and integers only
+	return fmt.Fprintln(w, string(b))
 }

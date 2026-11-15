@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/otfabric/go-sparkplugb/edge"
 	"github.com/otfabric/go-sparkplugb/host"
@@ -322,18 +321,57 @@ func TestEdge(t *testing.T) {
 }
 
 // TestEdgePrimaryHost checks that the edge waits for its primary host: no
-// birth or data until the host's STATE is online, then the births and data.
+// birth or data, however many publish intervals pass, until the host's STATE
+// is online; then the births, and data at each interval. The transport
+// records what was published when the STATE arrives.
 func TestEdgePrimaryHost(t *testing.T) {
+	tr := &recTransport{}
+	injectTransport(t, tr)
+	ticker := injectTicker(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	r := start(ctx, nil, "edge", "--group", "g", "--node", "n", "--device", "d1", "--primary-host", "scada")
+	eventually(t, "waiting", contains(r.stderr, "Waiting for primary host scada to be online"))
+	for range 3 {
+		ticker.tick(t) // each tick is taken after the one before it was handled
+	}
+	if n := tr.count("Publish "); n != 0 {
+		t.Fatalf("published before the primary host was online: %v", tr.callList())
+	}
+	if s := r.stderr.String(); strings.Contains(s, "Published") || strings.Contains(s, "publish NBIRTH") {
+		t.Fatalf("reported a publish before the primary host was online:\n%s", s)
+	}
+
+	tr.deliver(t, "spBv1.0/STATE/scada", "spBv1.0/STATE/scada", []byte(`{"online":true,"timestamp":1}`))
+	eventually(t, "births", func() bool { return tr.count("Publish spBv1.0/g/DBIRTH/n/d1") == 1 })
+	ticker.tick(t)
+	ticker.tick(t)
+	eventually(t, "data", func() bool { return tr.count("Publish spBv1.0/g/NDATA/n") >= 1 })
+	var order []string
+	for _, c := range tr.callList() {
+		if strings.HasPrefix(c, "Publish ") {
+			order = append(order, strings.TrimPrefix(c, "Publish "))
+		}
+	}
+	if len(order) < 3 || order[0] != "spBv1.0/g/NBIRTH/n" || order[1] != "spBv1.0/g/DBIRTH/n/d1" {
+		t.Errorf("published %v, want NBIRTH, DBIRTH, then NDATA", order)
+	}
+
+	cancel()
+	if err := r.wait(t); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestEdgePrimaryHostBroker runs the same through a broker: the births and
+// data follow the host's retained online STATE.
+func TestEdgePrimaryHostBroker(t *testing.T) {
 	url := startBroker(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	r := start(ctx, nil, "edge", "--broker", url, "--group", "g", "--node", "n", "--device", "d1",
 		"--interval", "20ms", "--primary-host", "scada")
 	eventually(t, "waiting", contains(r.stderr, "Waiting for primary host scada to be online"))
-	time.Sleep(100 * time.Millisecond)
-	if s := r.stderr.String(); strings.Contains(s, "Published") || strings.Contains(s, "publish NBIRTH") {
-		t.Fatalf("published before the primary host was online:\n%s", s)
-	}
 
 	pub := rawClient(t, url, "scada")
 	if err := pub.Publish(context.Background(), "spBv1.0/STATE/scada", 1, true, []byte(`{"online":true,"timestamp":1}`)); err != nil {
