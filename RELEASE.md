@@ -1,5 +1,23 @@
 # sparkplugbctl Releases
 
+## v0.5.0
+
+**Date:** 2026-11-15
+**Previous release:** v0.4.8
+
+Moves to go-sparkplugb v0.6.0 (was v0.5.0). No command, flag or exit code is added or changed.
+
+### Changed
+
+- Built on go-sparkplugb v0.6.0 (go-sparkplugb RELEASE.md, v0.6.0). For the tool this means:
+  - `host` and `app` no longer print an NDEATH of an edge node they have not seen born (no NBIRTH since they connected), in text or JSON output.
+  - The log lines of `host` and `app` on stderr quote the group, edge node and device IDs, e.g. `NBIRTH from "g1/n1"`.
+  - `edge` publishes its NBIRTH and DBIRTHs on each connection once the node is online, as before; an NCMD asking for a rebirth before that NBIRTH is logged and not acted on.
+  - `listen` and `decode` leave out the value of a metric of an array datatype above 1 << 20 elements (no `value` in JSON, `<nil>` in text), as for any value the library does not decode; before, only BooleanArray and StringArray metrics were limited.
+  - `version` lists `go-sparkplugb 0.6.0`.
+
+---
+
 ## v0.4.8
 
 **Date:** 2026-11-15
