@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/otfabric/go-sparkplugb/mqtt"
 	"github.com/otfabric/go-sparkplugb/payload"
 	"github.com/otfabric/sparkplugbctl/internal/broker"
@@ -21,3 +23,10 @@ var newTransport = func(o broker.Opts) (mqtt.Transport, error) {
 // encodePayload marshals a payload. Metrics that the command line can build
 // always marshal, so tests replace it to reach the failure path.
 var encodePayload = payload.Encode
+
+// newTicker starts the publish interval of edge and returns its channel and
+// the function that stops it. Tests replace it to tick on demand.
+var newTicker = func(d time.Duration) (<-chan time.Time, func()) {
+	t := time.NewTicker(d)
+	return t.C, t.Stop
+}

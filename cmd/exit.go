@@ -5,10 +5,14 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"os"
 	"strings"
+
+	"github.com/otfabric/sparkplugbctl/internal/output"
 )
 
 // Process exit codes: the organisation table (docs/exitcodes.md).
@@ -93,4 +97,43 @@ func applyFormatEnv(jsonGiven bool) error {
 		jsonOut = v == "json"
 	}
 	return nil
+}
+
+// outputError gives a failed write of a command's results (stdout) exit 10,
+// "the output could not be written" (docs/exitcodes.md), whatever its cause.
+// A nil err stays nil.
+func outputError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var we *output.WriteError
+	if !errors.As(err, &we) {
+		err = &output.WriteError{Err: err}
+	}
+	return withExit(ExitInternal, err)
+}
+
+// eventWriter writes the events of host and app to stdout from the
+// library's callbacks. The first write that fails is sent on failed, so that
+// the command ends with exit 10 instead of running on without output.
+type eventWriter struct {
+	w      io.Writer
+	failed chan error
+}
+
+func newEventWriter(w io.Writer) *eventWriter {
+	return &eventWriter{w: w, failed: make(chan error, 1)}
+}
+
+func (e *eventWriter) printf(format string, args ...any) {
+	e.report(fmt.Fprintf(e.w, format, args...))
+}
+
+func (e *eventWriter) report(_ int, err error) {
+	if err != nil {
+		select {
+		case e.failed <- err:
+		default:
+		}
+	}
 }

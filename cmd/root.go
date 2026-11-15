@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,14 +13,15 @@ import (
 )
 
 var (
-	brokerURL string
-	clientID  string
-	username  string
-	password  string
-	tlsCert   string
-	tlsKey    string
-	tlsCA     string
-	jsonOut   bool
+	brokerURL    string
+	clientID     string
+	username     string
+	password     string
+	passwordFile string
+	tlsCert      string
+	tlsKey       string
+	tlsCA        string
+	jsonOut      bool
 )
 
 var rootCmd = &cobra.Command{
@@ -38,6 +40,9 @@ A flag on the command line takes precedence.`,
 		if err := applyEnv(pf); err != nil {
 			return withExit(ExitUsage, err)
 		}
+		if password != "" && passwordFile != "" {
+			return withExit(ExitUsage, errors.New("--password and --password-file (or SPARKPLUGBCTL_PASSWORD and SPARKPLUGBCTL_PASSWORD_FILE) are both set: give one"))
+		}
 		return applyFormatEnv(pf.Changed("json"))
 	},
 }
@@ -45,12 +50,18 @@ A flag on the command line takes precedence.`,
 // envPrefix prefixes the environment variable of each global flag.
 const envPrefix = "SPARKPLUGBCTL_"
 
+// envAlternatives pairs the flags that give the same value: one given on
+// the command line keeps the variable of the other from applying.
+var envAlternatives = map[string]string{"password": "password-file", "password-file": "password"}
+
 // applyEnv sets every flag of fs not given on the command line from its
 // environment variable, when that is set.
 func applyEnv(fs *pflag.FlagSet) error {
+	onCommandLine := map[string]bool{}
+	fs.VisitAll(func(f *pflag.Flag) { onCommandLine[f.Name] = f.Changed })
 	var err error
 	fs.VisitAll(func(f *pflag.Flag) {
-		if err != nil || f.Changed {
+		if err != nil || f.Changed || onCommandLine[envAlternatives[f.Name]] {
 			return
 		}
 		name := envPrefix + strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
@@ -67,7 +78,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&brokerURL, "broker", "tcp://localhost:1883", "MQTT broker URL")
 	rootCmd.PersistentFlags().StringVar(&clientID, "client-id", "", "MQTT client ID (default: sparkplugbctl-<command>-<8 random hex digits>; host and edge derive it from their IDs)")
 	rootCmd.PersistentFlags().StringVar(&username, "username", "", "MQTT username")
-	rootCmd.PersistentFlags().StringVar(&password, "password", "", "MQTT password")
+	rootCmd.PersistentFlags().StringVar(&password, "password", "", "MQTT password (deprecated: use --password-file or SPARKPLUGBCTL_PASSWORD)")
+	rootCmd.PersistentFlags().StringVar(&passwordFile, "password-file", "", "file holding the MQTT password (one trailing line end is ignored)")
 	rootCmd.PersistentFlags().StringVar(&tlsCert, "tls-cert", "", "TLS client certificate file")
 	rootCmd.PersistentFlags().StringVar(&tlsKey, "tls-key", "", "TLS client key file")
 	rootCmd.PersistentFlags().StringVar(&tlsCA, "tls-ca", "", "TLS CA certificate file")
@@ -75,6 +87,7 @@ func init() {
 	completeFlags(rootCmd, cobra.NoFileCompletions, "broker", "client-id", "username", "password")
 	completeFlags(rootCmd, fileExt("pem", "crt", "cer"), "tls-cert", "tls-ca")
 	completeFlags(rootCmd, fileExt("pem", "key"), "tls-key")
+	completeFlags(rootCmd, anyFile, "password-file")
 }
 
 func Execute() error {

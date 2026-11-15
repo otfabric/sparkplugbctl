@@ -16,6 +16,7 @@ import (
 	mochi "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
+	"github.com/mochi-mqtt/server/v2/packets"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -51,6 +52,13 @@ func closeBroker(srv *mochi.Server) {
 
 func startBroker(t *testing.T) string {
 	t.Helper()
+	return startBrokerWith(t, new(auth.AllowHook))
+}
+
+// startBrokerWith starts a broker on loopback with hook deciding logins and
+// access, and returns its tcp:// URL.
+func startBrokerWith(t *testing.T, hook mochi.Hook) string {
+	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +67,7 @@ func startBroker(t *testing.T) string {
 	_ = ln.Close()
 
 	srv := mochi.New(&mochi.Options{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
-	if err := srv.AddHook(new(auth.AllowHook), nil); err != nil {
+	if err := srv.AddHook(hook, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := srv.AddListener(listeners.NewTCP(listeners.Config{ID: "test", Address: addr})); err != nil {
@@ -88,6 +96,47 @@ func resetFlags(c *cobra.Command) {
 	}
 }
 
+// loginHook admits only the client that logs in with user and pass, and
+// records the user name of every CONNECT.
+type loginHook struct {
+	mochi.HookBase
+	user, pass string
+
+	mu    sync.Mutex
+	users []string
+}
+
+func (h *loginHook) ID() string { return "test-login" }
+
+func (h *loginHook) Provides(b byte) bool {
+	return b == mochi.OnConnectAuthenticate || b == mochi.OnACLCheck
+}
+
+func (h *loginHook) OnConnectAuthenticate(_ *mochi.Client, pk packets.Packet) bool {
+	h.mu.Lock()
+	h.users = append(h.users, string(pk.Connect.Username))
+	h.mu.Unlock()
+	return string(pk.Connect.Username) == h.user && string(pk.Connect.Password) == h.pass
+}
+
+func (h *loginHook) OnACLCheck(*mochi.Client, string, bool) bool { return true }
+
+// logins returns the user names of the CONNECTs so far and forgets them.
+func (h *loginHook) logins() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	u := h.users
+	h.users = nil
+	return u
+}
+
+// startAuthBroker starts a broker that admits only user with pass.
+func startAuthBroker(t *testing.T, user, pass string) (string, *loginHook) {
+	t.Helper()
+	h := &loginHook{user: user, pass: pass}
+	return startBrokerWith(t, h), h
+}
+
 type result struct {
 	stdout *syncBuffer
 	stderr *syncBuffer
@@ -106,10 +155,19 @@ func (r *result) wait(t *testing.T) error {
 }
 
 func start(ctx context.Context, stdin io.Reader, args ...string) *result {
+	return startOut(ctx, stdin, nil, args...)
+}
+
+// startOut starts the command line with stdout written to out, or to the
+// result's buffer when out is nil.
+func startOut(ctx context.Context, stdin io.Reader, out io.Writer, args ...string) *result {
 	resetFlags(rootCmd)
 	r := &result{stdout: &syncBuffer{}, stderr: &syncBuffer{}, done: make(chan error, 1)}
 	rootCmd.SetArgs(args)
-	rootCmd.SetOut(r.stdout)
+	if out == nil {
+		out = r.stdout
+	}
+	rootCmd.SetOut(out)
 	rootCmd.SetErr(r.stderr)
 	if stdin == nil {
 		stdin = strings.NewReader("")

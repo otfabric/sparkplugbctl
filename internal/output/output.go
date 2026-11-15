@@ -17,9 +17,48 @@ import (
 	"github.com/otfabric/go-sparkplugb/topic"
 )
 
+// Printer writes decoded payloads to W, as text or, with JSON, as indented
+// JSON documents (docs/json-output.md). Each metric is formatted and written
+// before the next: what a payload holds in memory while it is printed does
+// not grow with its number of metrics.
 type Printer struct {
 	W    io.Writer
 	JSON bool
+}
+
+// WriteError is a write to the Printer's writer that failed. The Print
+// methods return it, and stop at the first failed write.
+type WriteError struct{ Err error }
+
+func (e *WriteError) Error() string { return "write output: " + e.Err.Error() }
+func (e *WriteError) Unwrap() error { return e.Err }
+
+// errWriter passes writes to w until one fails, and then keeps that error.
+type errWriter struct {
+	w   io.Writer
+	err error
+}
+
+func (e *errWriter) Write(b []byte) (int, error) {
+	if e.err != nil {
+		return 0, e.err
+	}
+	n, err := e.w.Write(b)
+	if err != nil {
+		e.err = err
+	}
+	return n, err
+}
+
+func (e *errWriter) WriteString(s string) {
+	_, _ = io.WriteString(e, s)
+}
+
+func (e *errWriter) result() error {
+	if e.err != nil {
+		return &WriteError{Err: e.err}
+	}
+	return nil
 }
 
 type MessageView struct {
@@ -33,6 +72,13 @@ type MessageView struct {
 	Metrics  []MetricView `json:"metrics"`
 }
 
+// payloadView is the document of PrintPayload.
+type payloadView struct {
+	Seq     uint64       `json:"seq"`
+	Time    string       `json:"timestamp,omitempty"`
+	Metrics []MetricView `json:"metrics"`
+}
+
 // StateView is a primary host's STATE message: JSON, not protobuf.
 type StateView struct {
 	Topic  string `json:"topic"`
@@ -43,7 +89,8 @@ type StateView struct {
 }
 
 // PrintState prints the STATE message data of topic t (the JSON payload
-// {"online", "timestamp"} of Sparkplug 3.0).
+// {"online", "timestamp"} of Sparkplug 3.0). Data that is not such a payload
+// returns an error and prints nothing; a failed write returns a *WriteError.
 func (p *Printer) PrintState(t topic.Topic, data []byte) error {
 	var st struct {
 		Online    *bool  `json:"online"`
@@ -59,18 +106,20 @@ func (p *Printer) PrintState(t topic.Topic, data []byte) error {
 	if st.Timestamp != 0 {
 		sv.Time = millisTime(st.Timestamp)
 	}
+	w := &errWriter{w: p.W}
 	if p.JSON {
-		enc := json.NewEncoder(p.W)
+		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-		return enc.Encode(sv)
+		_ = enc.Encode(sv) // a StateView always encodes; a write error is kept in w
+		return w.result()
 	}
-	_, _ = fmt.Fprintf(p.W, "[%s] %s\n", t.Type, t.String())
-	_, _ = fmt.Fprintf(p.W, "  online=%t", sv.Online)
+	w.WriteString("[" + t.Type.String() + "] " + Escape(t.String()) + "\n")
+	w.WriteString("  online=" + strconv.FormatBool(sv.Online))
 	if sv.Time != "" {
-		_, _ = fmt.Fprintf(p.W, "  ts=%s", sv.Time)
+		w.WriteString("  ts=" + sv.Time)
 	}
-	_, _ = fmt.Fprint(p.W, "\n\n")
-	return nil
+	w.WriteString("\n\n")
+	return w.result()
 }
 
 type MetricView struct {
@@ -82,7 +131,10 @@ type MetricView struct {
 	Quality   string `json:"quality,omitempty"`
 }
 
-func (p *Printer) PrintMessage(t topic.Topic, pl *pb.Payload) {
+// PrintMessage prints a message that arrived on topic t. A failed write
+// returns a *WriteError.
+func (p *Printer) PrintMessage(t topic.Topic, pl *pb.Payload) error {
+	w := &errWriter{w: p.W}
 	mv := MessageView{
 		Topic:    t.String(),
 		Type:     t.Type.String(),
@@ -94,71 +146,127 @@ func (p *Printer) PrintMessage(t topic.Topic, pl *pb.Payload) {
 	if pl.Timestamp != nil {
 		mv.Time = millisTime(*pl.Timestamp)
 	}
-	for _, m := range pl.Metrics {
-		mv.Metrics = append(mv.Metrics, metricView(m))
-	}
 
 	if p.JSON {
-		enc := json.NewEncoder(p.W)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(mv)
-		return
+		writeJSON(w, mv, pl.Metrics)
+		return w.result()
 	}
 
-	_, _ = fmt.Fprintf(p.W, "[%s] %s\n", t.Type, t.String())
-	_, _ = fmt.Fprintf(p.W, "  seq=%d", mv.Seq)
+	w.WriteString("[" + t.Type.String() + "] " + Escape(t.String()) + "\n")
+	w.WriteString("  seq=" + strconv.FormatUint(mv.Seq, 10))
 	if mv.Time != "" {
-		_, _ = fmt.Fprintf(p.W, "  ts=%s", mv.Time)
+		w.WriteString("  ts=" + mv.Time)
 	}
-	_, _ = fmt.Fprintln(p.W)
-
-	tw := tabwriter.NewWriter(p.W, 2, 4, 2, ' ', 0)
-	for _, m := range mv.Metrics {
-		line := fmt.Sprintf("  %s\t%s\t%v", m.Name, m.Type, m.Value)
-		if m.Quality != "" {
-			line += fmt.Sprintf("\tquality=%s", m.Quality)
-		}
-		_, _ = fmt.Fprintln(tw, line)
-	}
-	_ = tw.Flush()
-	_, _ = fmt.Fprintln(p.W)
+	w.WriteString("\n")
+	writeMetricLines(w, pl.Metrics)
+	w.WriteString("\n")
+	return w.result()
 }
 
-func (p *Printer) PrintPayload(pl *pb.Payload) {
+// PrintPayload prints a payload read from a file or stdin. A failed write
+// returns a *WriteError.
+func (p *Printer) PrintPayload(pl *pb.Payload) error {
+	w := &errWriter{w: p.W}
 	if p.JSON {
-		mv := struct {
-			Seq     uint64       `json:"seq"`
-			Time    string       `json:"timestamp,omitempty"`
-			Metrics []MetricView `json:"metrics"`
-		}{Seq: pl.GetSeq()}
+		v := payloadView{Seq: pl.GetSeq()}
 		if pl.Timestamp != nil {
-			mv.Time = millisTime(*pl.Timestamp)
+			v.Time = millisTime(*pl.Timestamp)
 		}
-		for _, m := range pl.Metrics {
-			mv.Metrics = append(mv.Metrics, metricView(m))
-		}
-		enc := json.NewEncoder(p.W)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(mv)
-		return
+		writeJSON(w, v, pl.Metrics)
+		return w.result()
 	}
 
-	_, _ = fmt.Fprintf(p.W, "seq=%d", pl.GetSeq())
+	w.WriteString("seq=" + strconv.FormatUint(pl.GetSeq(), 10))
 	if pl.Timestamp != nil {
-		_, _ = fmt.Fprintf(p.W, "  ts=%s", millisTime(*pl.Timestamp))
+		w.WriteString("  ts=" + millisTime(*pl.Timestamp))
 	}
-	_, _ = fmt.Fprintln(p.W)
+	w.WriteString("\n")
+	writeMetricLines(w, pl.Metrics)
+	return w.result()
+}
 
-	tw := tabwriter.NewWriter(p.W, 2, 4, 2, ' ', 0)
-	for _, m := range pl.Metrics {
+// Text output aligns the metric lines of a message in columns
+// (text/tabwriter), which holds the lines until it is flushed. It is flushed
+// after textBlockLines lines, or once the lines it holds reach
+// textBlockBytes, so that a message of many or very long lines is printed
+// in blocks, each aligned on its own.
+const (
+	textBlockLines = 4096
+	textBlockBytes = 256 << 10
+)
+
+// writeMetricLines writes one text line per metric: name, datatype, value
+// and quality, aligned in columns.
+func writeMetricLines(w *errWriter, metrics []*pb.Payload_Metric) {
+	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)
+	lines, held := 0, 0
+	for _, m := range metrics {
 		mv := metricView(m)
-		line := fmt.Sprintf("  %s\t%s\t%v", mv.Name, mv.Type, mv.Value)
+		cells := []string{"  ", Escape(mv.Name), "\t", mv.Type, "\t", Escape(fmt.Sprint(mv.Value))}
 		if mv.Quality != "" {
-			line += fmt.Sprintf("\tquality=%s", mv.Quality)
+			cells = append(cells, "\tquality=", mv.Quality)
 		}
-		_, _ = fmt.Fprintln(tw, line)
+		cells = append(cells, "\n")
+		for _, c := range cells {
+			_, _ = io.WriteString(tw, c)
+			held += len(c)
+		}
+		lines++
+		if lines == textBlockLines || held >= textBlockBytes {
+			_ = tw.Flush()
+			lines, held = 0, 0
+		}
+		if w.err != nil {
+			return
+		}
 	}
 	_ = tw.Flush()
+}
+
+// writeJSON writes head, a view whose last field is its nil "metrics", as
+// json.Encoder with SetIndent("", "  ") writes it, with the metrics in place
+// of the null: the same bytes as encoding the whole view at once, without
+// holding the whole document. head always encodes (strings and integers).
+func writeJSON(w *errWriter, head any, metrics []*pb.Payload_Metric) {
+	b, err := json.MarshalIndent(head, "", "  ")
+	if err != nil {
+		w.err = err
+		return
+	}
+	if len(metrics) == 0 {
+		_, _ = w.Write(append(b, '\n'))
+		return
+	}
+	const null = "null\n}"
+	_, _ = w.Write(b[:len(b)-len(null)])
+	w.WriteString("[\n")
+	for i, m := range metrics {
+		w.WriteString("    ")
+		_, _ = w.Write(metricJSON(metricView(m)))
+		if i < len(metrics)-1 {
+			w.WriteString(",\n")
+		} else {
+			w.WriteString("\n")
+		}
+		if w.err != nil {
+			return
+		}
+	}
+	w.WriteString("  ]\n}\n")
+}
+
+// metricJSON encodes mv as an element of the "metrics" array. A value JSON
+// has no form for, NaN and the infinities alone or in an array and a
+// DateTime beyond year 9999, is written as text instead: left in, it would
+// make the document unreadable, and one metric reading NaN (a sensor fault,
+// say) would lose the others.
+func metricJSON(mv MetricView) []byte {
+	b, err := json.MarshalIndent(mv, "    ", "  ")
+	if err != nil {
+		mv.Value = fmt.Sprint(mv.Value)
+		b, _ = json.MarshalIndent(mv, "    ", "  ") // only strings and integers left
+	}
+	return b
 }
 
 func metricView(m *pb.Payload_Metric) MetricView {
@@ -178,7 +286,7 @@ func metricView(m *pb.Payload_Metric) MetricView {
 
 	val, err := payload.GetValue(m)
 	if err == nil {
-		mv.Value = jsonSafe(val)
+		mv.Value = val
 	}
 
 	q, ok := payload.GetQuality(m)
@@ -186,17 +294,6 @@ func metricView(m *pb.Payload_Metric) MetricView {
 		mv.Quality = qualityName(q)
 	}
 	return mv
-}
-
-// jsonSafe returns v, or v as text when JSON has no form for it: NaN and the
-// infinities, alone or in an array, and a DateTime beyond year 9999. Left in,
-// they make encoding/json refuse the whole document, and one metric reading
-// NaN (a sensor fault, say) would empty the output.
-func jsonSafe(v any) any {
-	if _, err := json.Marshal(v); err != nil {
-		return fmt.Sprint(v)
-	}
-	return v
 }
 
 func qualityName(q int32) string {

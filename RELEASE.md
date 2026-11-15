@@ -1,5 +1,60 @@
 # sparkplugbctl Releases
 
+## v0.6.0
+
+**Date:** 2026-11-15
+**Previous release:** v0.5.0
+
+Logins for every command that connects, a password file, a bound on the payloads `listen` and `decode` decode, escaped text output, and checks of the command line before `edge` and `publish` connect. Adds `--password-file`, `SPARKPLUGBCTL_PASSWORD_FILE` and `--max-payload`; `--password` is deprecated. Some exit codes change (below); the JSON output is unchanged.
+
+### Added
+
+- `--password-file` and `SPARKPLUGBCTL_PASSWORD_FILE`: the MQTT password from a file, without one trailing `\n` or `\r\n`, at most the 65535 bytes MQTT allows. Only the commands that connect read it. A missing or empty file, or a longer one, is exit 3, one the operating system does not let it read exit 9; `--password` together with `--password-file`, or both variables, is exit 2. `--password-file` on the command line takes precedence over `SPARKPLUGBCTL_PASSWORD`, and `--password` over `SPARKPLUGBCTL_PASSWORD_FILE`.
+- `--max-payload` of `listen` and `decode`: the largest payload they decode, in bytes; default 16777216 (16 MiB), far above what a Sparkplug payload carries in practice.
+
+### Breaking
+
+Exit codes that scripts see differently (AGENTS.md hard rule 1; docs/exitcodes.md):
+
+- A failed write to stdout is exit 10, "the output could not be written": for `decode`, `encode`, `publish` and `version` (before: 0, and 3 for `encode`), and for `listen`, `host` and `app` at the first message they cannot write, after they disconnect (before, they ran on and exited 0). No way back: the output was lost before; a script that ignored that can accept 10.
+- `decode` of an input above `--max-payload`: exit 3; it was decoded before. `--max-payload` raises the bound (up to `math.MaxInt-1`).
+- `edge --interval` of 0 or less: exit 3, before connecting (before, the command stopped with a runtime error, exit 2, after connecting). Give a positive `--interval`.
+- `edge` with a `--metric` that does not parse: exit 3 as before, now before connecting, so the broker publishes no NDEATH of the node. None needed: the exit code is the same, and comes earlier.
+- `publish --topic` with `+` or `#`: exit 3, before connecting (before, exit 0; the topic of an MQTT PUBLISH has no wildcards, and the message reached no subscriber). None needed: such a message reached no subscriber.
+- `publish --seq` above 255: exit 3, before connecting (before, published with that number; a Sparkplug sequence number is 0 to 255). Use a sequence number from 0 to 255.
+
+### Changed
+
+- `edge`, `host` and `app` log in with `--username` and the password (`--password`, `--password-file` or their variables), as `listen` and `publish` do; they connected without a login before.
+- The help text marks `--password` deprecated, in favour of `--password-file` or `SPARKPLUGBCTL_PASSWORD`. It still works.
+- A password without `--username` is not sent by any command, and a warning on stderr says so: MQTT carries a password only with a username. `listen` and `publish` left it out without a word before.
+- A `--tls-cert`, `--tls-key` or `--tls-ca` with a broker URL whose scheme connects without TLS (`tcp://`, `mqtt://`, `ws://`, `unix://`, or no scheme) prints a warning on stderr naming the flag and the scheme. The command connects without TLS, as before.
+- `listen`, `host`, `app` and `edge` print the broker URL with the password of its user information replaced by `xxxxx`.
+- Text output escapes the control characters, bidirectional formatting characters, line and paragraph separators and bytes that are not UTF-8 of what comes from the broker, as Go escapes (`\x1b`, `\u202e`, `\xff`): the topic, metric names, string values and STATE host ID of `listen` and `decode`, the event lines of `host` and `app`, the decode-error lines of `listen` and the DCMD lines of `edge`. Names without such characters print as before; the JSON output is unchanged.
+- `listen` and `decode` format and write the metrics of a message one at a time, instead of holding the whole output until the end. The JSON output is the same, byte for byte. In text, the metric lines are aligned in blocks of up to 4096 lines or 256 KiB; before, all the lines of a message were aligned together.
+- `listen` reports a message above `--max-payload` on stderr, `decode error on <topic>: payload of N bytes is above the limit of M bytes (--max-payload)`, and goes on.
+- `edge` checks `--metric` and `--interval` before it connects.
+- `edge` prints `Published DDEATH for <device>` only for a DDEATH that was published, and `publish DDEATH <device>: <error>` for one that was not.
+
+### Documentation
+
+- README.md: the new flags and variable, logins, TLS schemes, the payload bound and the escaped text output; `make lint` runs staticcheck only (it said `go vet` too).
+- `app --help` no longer says that the command can send NCMD/DCMD commands: it has no option for that.
+- SECURITY.md: TLS schemes, credential handling and the password file, the payload bound and memory, escaped text output.
+- docs/exitcodes.md: the cases above.
+
+### Tests
+
+- `TestCredentials`: `listen`, `publish`, `edge`, `host` and `app` against a broker that admits one login, with the flags, the variables and the password file; a wrong password and no login exit 4; the password is in no output. `TestPasswordWithoutUsername`, `TestPasswordFile`, `TestReadPasswordBounds`, `TestPasswordHelp`.
+- `TestTLSFlagsWithoutTLSScheme` and `TestTLSFlagsWarningOnCommand`; `TestRedactURL` and `TestBrokerURLPasswordNotPrinted`.
+- `TestDecodeMaxPayload`, `TestDecodeLargeInput`, `TestPayloadLimit` (the bound on 32-bit platforms) and `TestListenMaxPayload`. In `internal/output`, `TestPrintMemoryBudget` bounds the heap held while a payload of 16384 array metrics is printed, in text and JSON; `TestPrintJSONSameDocument`, `TestPrintTextSameColumns` and `TestPrintTextBlocks` compare the output with the form of v0.5.0.
+- `TestEscape`, `TestPrintTextEscapes` and `TestTextOutputEscapesBrokerStrings`.
+- `TestOutputWriteErrors`, `TestStreamWriteErrors`, `TestPrintWriteError` and `TestEdgeDeviceDeathFailure`.
+- `TestEdgeValidatesBeforeConnect` and `TestPublishValidatesBeforeConnect`.
+- `TestEdgePrimaryHost` drives the publish interval and records the transport, instead of waiting 100 ms: nothing is published over three intervals before the primary host's STATE, then NBIRTH, DBIRTH and NDATA in that order. `TestEdgePrimaryHostBroker` keeps the run through a broker.
+
+---
+
 ## v0.5.0
 
 **Date:** 2026-11-15
