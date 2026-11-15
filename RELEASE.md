@@ -1,5 +1,18 @@
 # sparkplugbctl Releases
 
+## v0.4.8
+
+**Date:** 2026-11-15
+**Previous release:** v0.4.7
+
+No command or flag is added or changed.
+
+### Changed
+
+- Built on go-sparkplugb v0.5.0 (was v0.4.3) (go-sparkplugb RELEASE.md, v0.5.0). The release adds session checks that a host or application switches on; the tool does not set them, so its behaviour is unchanged.
+
+---
+
 ## v0.4.7
 
 **Date:** 2026-11-14
