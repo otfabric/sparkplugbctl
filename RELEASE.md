@@ -1,5 +1,23 @@
 # sparkplugbctl Releases
 
+## v0.7.0
+
+**Date:** 2026-11-16
+**Previous release:** v0.6.2
+
+`edge` checks its group, edge node and device IDs before it connects. No command or flag is added; the JSON output is unchanged.
+
+### Breaking
+
+- `edge --device` with a value that is not a Sparkplug ID (empty, not valid UTF-8, or with `/`, `+` or `#`; Sparkplug B 3.0.0, tck-id-topics-device-id) now ends the command at once with exit 3 (`invalid_input`, docs/exitcodes.md), before connecting, with a message that names the flag and the quoted value, such as `--device "a/b": a Sparkplug ID is non-empty valid UTF-8 without '/', '+' or '#'`. Every `--device` value is checked; an empty item of a comma list (`--device d1,`) is such a value. In v0.6.2 the node connected, published NBIRTH, printed `publish DBIRTH <id>: …` on stderr, gave that device and the devices after it no DBIRTH, and went on publishing NDATA. Who notices: scripts that pass such device IDs. Restore path: none sensible; use device IDs the rule allows.
+
+### Changed
+
+- `edge --group` and `--node` go through the same check: a value that is not a Sparkplug ID ends the command with exit 3 before connecting, as in v0.6.2. The message now names the flag, as for `--device` (`--group "a/b": a Sparkplug ID is …`); in v0.6.2 it was go-sparkplugb's (`sparkplugb: GroupID "a/b": sparkplugb: invalid ID`, or `sparkplugb: GroupID and EdgeNodeID are required` for an empty one).
+- The help of `edge --group`, `--node` and `--device` states the rule for an ID; README.md and docs/exitcodes.md describe the check.
+
+---
+
 ## v0.6.2
 
 **Date:** 2026-11-16

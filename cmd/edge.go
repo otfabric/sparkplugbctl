@@ -14,6 +14,7 @@ import (
 	"github.com/otfabric/go-sparkplugb/edge"
 	"github.com/otfabric/go-sparkplugb/payload"
 	pb "github.com/otfabric/go-sparkplugb/proto"
+	"github.com/otfabric/go-sparkplugb/topic"
 	"github.com/otfabric/sparkplugbctl/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -40,9 +41,9 @@ deltas on each publish interval.`,
 }
 
 func init() {
-	edgeCmd.Flags().StringVar(&edgeGroup, "group", "", "Sparkplug group ID (required)")
-	edgeCmd.Flags().StringVar(&edgeNode, "node", "", "Sparkplug edge node ID (required)")
-	edgeCmd.Flags().StringSliceVar(&edgeDevices, "device", nil, "device IDs (repeatable)")
+	edgeCmd.Flags().StringVar(&edgeGroup, "group", "", "Sparkplug group ID (required; "+idRule+")")
+	edgeCmd.Flags().StringVar(&edgeNode, "node", "", "Sparkplug edge node ID (required; "+idRule+")")
+	edgeCmd.Flags().StringSliceVar(&edgeDevices, "device", nil, "device IDs (repeatable; "+idRule+")")
 	edgeCmd.Flags().StringSliceVar(&edgeMetrics, "metric", nil, "node metrics as name:type=value (repeatable)")
 	edgeCmd.Flags().DurationVar(&edgeInterval, "interval", 5*time.Second, "data publish interval")
 	edgeCmd.Flags().StringVar(&edgePrimaryHost, "primary-host", "", "primary host application ID")
@@ -58,6 +59,17 @@ func runEdge(cmd *cobra.Command, args []string) error {
 	// The command line is checked before connecting: the connection arms
 	// the node's NDEATH will, which the broker publishes if the command ends
 	// without a Disconnect.
+	if err := checkTopicID("--group", edgeGroup); err != nil {
+		return err
+	}
+	if err := checkTopicID("--node", edgeNode); err != nil {
+		return err
+	}
+	for _, devID := range edgeDevices {
+		if err := checkTopicID("--device", devID); err != nil {
+			return err
+		}
+	}
 	if edgeInterval <= 0 {
 		return withExit(ExitInvalidInput, fmt.Errorf("--interval %s: must be more than 0", edgeInterval))
 	}
@@ -198,6 +210,22 @@ func runEdge(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
+}
+
+// idRule is the rule for a group, edge node or device ID: the topic segment
+// rule of Sparkplug B 3.0.0 (tck-id-topics-device-id).
+const idRule = "non-empty valid UTF-8 without '/', '+' or '#'"
+
+// checkTopicID returns an invalid-input error naming flag and id when id
+// cannot be a segment of a Sparkplug topic. The check is go-sparkplugb's
+// own, the one its edge node applies in New and PublishDeviceBirth: the
+// topic package has no exported check of a single ID, so the ID is parsed as
+// the last segment of a STATE topic, as go-sparkplugb's edge package does.
+func checkTopicID(flag, id string) error {
+	if _, err := topic.Parse(topic.ForState(id)); err != nil {
+		return withExit(ExitInvalidInput, fmt.Errorf("%s %q: a Sparkplug ID is %s", flag, id, idRule))
+	}
+	return nil
 }
 
 func buildEdgeMetrics(specs []string) ([]*pb.Payload_Metric, error) {

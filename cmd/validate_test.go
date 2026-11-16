@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -57,6 +58,88 @@ func TestEdgeValidatesBeforeConnect(t *testing.T) {
 	}
 	if tr.count("Connect") != 1 || tr.count("Disconnect") != 1 {
 		t.Errorf("calls %v, want one Connect and one Disconnect", tr.callList())
+	}
+}
+
+// TestEdgeChecksIDsBeforeConnect checks that edge refuses a group, edge node
+// or device ID that cannot be a segment of a Sparkplug topic (empty, not
+// valid UTF-8, or with '/', '+' or '#') as invalid input, with a message that
+// names the flag and the quoted value, before it connects: the transport
+// sees no Connect.
+// An accepted command line reaches the Connect, which the transport fails,
+// so that the command ends at once.
+func TestEdgeChecksIDsBeforeConnect(t *testing.T) {
+	const rule = ": a Sparkplug ID is non-empty valid UTF-8 without '/', '+' or '#'"
+	for _, c := range []struct {
+		name        string
+		group, node string
+		devices     []string // one --device flag each
+		want        string   // the flag and the value as the message quotes them; empty when accepted
+	}{
+		{"one character each", "g", "n", []string{"d"}, ""},
+		{"one multi-byte character", "é", "ñ", []string{"ü"}, ""},
+		{"no device", "plant", "gw1", nil, ""},
+		{"two devices", "plant", "gw1", []string{"sensor1", "sensor2"}, ""},
+		// pflag reads `--device ""` as an empty list: no device ID is given.
+		{"empty device flag", "g", "n", []string{""}, ""},
+
+		{"group empty", "", "n", nil, `--group ""`},
+		{"group /", "/", "n", nil, `--group "/"`},
+		{"group with /", "a/b", "n", nil, `--group "a/b"`},
+		{"group +", "+", "n", nil, `--group "+"`},
+		{"group with +", "a+b", "n", nil, `--group "a+b"`},
+		{"group #", "#", "n", nil, `--group "#"`},
+		{"group with #", "a#b", "n", nil, `--group "a#b"`},
+		{"group not UTF-8", "\xff", "n", nil, `--group "\xff"`},
+
+		{"node empty", "g", "", nil, `--node ""`},
+		{"node /", "g", "/", nil, `--node "/"`},
+		{"node with /", "g", "a/b", nil, `--node "a/b"`},
+		{"node +", "g", "+", nil, `--node "+"`},
+		{"node with +", "g", "a+b", nil, `--node "a+b"`},
+		{"node #", "g", "#", nil, `--node "#"`},
+		{"node with #", "g", "a#b", nil, `--node "a#b"`},
+		{"node with a byte that is not UTF-8", "g", "a\xffb", nil, `--node "a\xffb"`},
+
+		{"device empty in a list", "g", "n", []string{"d1,"}, `--device ""`},
+		{"device /", "g", "n", []string{"/"}, `--device "/"`},
+		{"device with /", "g", "n", []string{"a/b"}, `--device "a/b"`},
+		{"device +", "g", "n", []string{"+"}, `--device "+"`},
+		{"device with +", "g", "n", []string{"a+b"}, `--device "a+b"`},
+		{"device #", "g", "n", []string{"#"}, `--device "#"`},
+		{"device with #", "g", "n", []string{"a#b"}, `--device "a#b"`},
+		{"device not UTF-8", "g", "n", []string{"\xff"}, `--device "\xff"`},
+		{"device with a byte that is not UTF-8", "g", "n", []string{"a\xffb"}, `--device "a\xffb"`},
+		{"device with a control character", "g", "n", []string{"a\x1b/b"}, `--device "a\x1b/b"`},
+		{"second device", "g", "n", []string{"d1", "d/2"}, `--device "d/2"`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			tr := &recTransport{connectErr: errInjected}
+			injectTransport(t, tr)
+			args := []string{"edge", "--group", c.group, "--node", c.node}
+			for _, d := range c.devices {
+				args = append(args, "--device", d)
+			}
+			_, _, err := run(t, nil, args...)
+			if c.want == "" {
+				if !errors.Is(err, errInjected) || ExitCode(err) != ExitTransport {
+					t.Errorf("error %v (exit %d), want the injected connect error", err, ExitCode(err))
+				}
+				if n := tr.count("Connect"); n != 1 {
+					t.Errorf("transport calls %v, want one Connect", tr.callList())
+				}
+				return
+			}
+			if got := ExitCode(err); got != ExitInvalidInput {
+				t.Errorf("exit %d, want %d (%v)", got, ExitInvalidInput, err)
+			}
+			if err == nil || !strings.Contains(err.Error(), c.want+rule) {
+				t.Errorf("error %v, want %q", err, c.want+rule)
+			}
+			if calls := tr.callList(); len(calls) != 0 {
+				t.Errorf("transport calls %v, want none", calls)
+			}
+		})
 	}
 }
 

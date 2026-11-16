@@ -6,7 +6,7 @@ sparkplugbctl's exit codes are a script-facing contract (`cmd/exit.go`). They fo
 |------|------|---------|
 | 0 | ok | Success. `listen`, `host`, `app` and `edge` also exit 0 when stopped with Ctrl-C or SIGTERM |
 | 2 | usage | Unknown command or flag, missing required flag, an invalid `SPARKPLUGBCTL_*` value, the password given both as `--password` and `--password-file` (or both variables) |
-| 3 | invalid_input | An unreadable input, TLS or password file, a payload that does not decode, a `decode` input above `--max-payload`, a metric that does not parse, an `edge --interval` that is not more than 0, a `publish --topic` with a wildcard or a `--seq` above 255, an invalid configuration |
+| 3 | invalid_input | An unreadable input, TLS or password file, a payload that does not decode, a `decode` input above `--max-payload`, a metric that does not parse, an `edge --interval` that is not more than 0, an `edge --group`, `--node` or `--device` that is not a Sparkplug ID (empty, not valid UTF-8, or with `/`, `+` or `#`), a `publish --topic` with a wildcard or a `--seq` above 255, an invalid configuration |
 | 4 | transport | Connecting, subscribing or publishing failed |
 | 5 | timeout | A deadline passed |
 | 9 | permission | The operating system refused an operation |
