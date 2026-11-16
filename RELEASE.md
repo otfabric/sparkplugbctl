@@ -1,5 +1,18 @@
 # sparkplugbctl Releases
 
+## v0.6.2
+
+**Date:** 2026-11-16
+**Previous release:** v0.6.1
+
+No command or flag is added or changed.
+
+### Changed
+
+- Built on go-sparkplugb v0.8.0 (was v0.7.0) (go-sparkplugb RELEASE.md, v0.8.0). The edge node refuses a device ID that is empty, not valid UTF-8, or contains `/`, `+` or `#` (Sparkplug B 3.0.0, tck-id-topics-device-id). For `sparkplugbctl edge --device`, such a value now prints `publish DBIRTH <id>: …` with the library's `invalid ID` error to stderr when the births are published; that device and the devices after it get no DBIRTH, and the node goes on publishing NDATA, as after any failed DBIRTH. Before, the device messages went out on a topic that a host does not parse as that device's. Device IDs the rule allows, such as those of the examples and the README, behave as before. An operation in flight when the runtime closes now also matches `ErrClosed`; sparkplugbctl closes its runtime once the command ends, so its output and exit status do not change otherwise.
+
+---
+
 ## v0.6.1
 
 **Date:** 2026-11-16
