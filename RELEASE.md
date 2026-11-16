@@ -1,5 +1,18 @@
 # sparkplugbctl Releases
 
+## v0.6.1
+
+**Date:** 2026-11-16
+**Previous release:** v0.6.0
+
+No command or flag is added or changed.
+
+### Changed
+
+- Built on go-sparkplugb v0.7.0 (was v0.6.0) (go-sparkplugb RELEASE.md, v0.7.0). `Close` of the edge node, host and application now also ends and wait for the runtime's goroutines and timers, and calls after `Close` return errors that match `ErrClosed` as well as the errors they returned before. sparkplugbctl closes its runtime from the command's own goroutine once the command ends, so its output and exit status do not change.
+
+---
+
 ## v0.6.0
 
 **Date:** 2026-11-15
