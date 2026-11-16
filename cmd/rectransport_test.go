@@ -15,10 +15,12 @@ import (
 // recTransport is an mqtt.Transport without a broker that records every
 // call and keeps the handlers of the subscriptions, so that a test can
 // deliver messages and look at what was published at a given moment.
-// Publishing to a topic that contains failTopic fails with publishErr.
+// Publishing to a topic that contains failTopic fails with publishErr; a
+// Connect is recorded and returns connectErr.
 type recTransport struct {
 	failTopic  string
 	publishErr error
+	connectErr error
 
 	mu        sync.Mutex
 	calls     []string // "Connect", "Subscribe <topic>", "Publish <topic>", "Disconnect"
@@ -38,7 +40,7 @@ func (r *recTransport) Connect(_ context.Context, o mqtt.ConnectOpts) error {
 	r.connect = o
 	r.mu.Unlock()
 	r.record("Connect")
-	return nil
+	return r.connectErr
 }
 
 func (r *recTransport) Publish(_ context.Context, topic string, _ byte, _ bool, data []byte) error {

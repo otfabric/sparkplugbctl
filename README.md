@@ -185,8 +185,14 @@ periodic data publishing. Each device is born with one metric, `status`
 (Boolean). Received NCMD and DCMD messages are reported; a rebirth request
 is answered with new births.
 
-`--metric` and `--interval` are checked before the node connects: a metric
-that does not parse, or an interval that is not more than 0, ends the
+`--group`, `--node` and every `--device` are Sparkplug IDs: not empty, valid
+UTF-8, and without `/`, `+` or `#`, the rule of a topic segment in Sparkplug
+B 3.0.0. They are checked first, before the node connects: any other value
+ends the command with exit 3 and a message that names the flag and the value,
+and nothing is published.
+
+`--metric` and `--interval` are checked before the node connects too: a
+metric that does not parse, or an interval that is not more than 0, ends the
 command with exit 3 and nothing is published.
 
 With `--primary-host`, the node waits for that host's STATE to be online
